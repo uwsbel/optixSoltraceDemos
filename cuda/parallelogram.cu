@@ -1,6 +1,5 @@
 #include <optix.h>
-
-#include "helpers.h"
+#include <cuda/helpers.h>
 #include "Soltrace.h"
 
 extern "C" __global__ void __intersection__parallelogram()

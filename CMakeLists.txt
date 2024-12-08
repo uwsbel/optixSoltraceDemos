@@ -1,4 +1,7 @@
-#
+# TODO
+# auto copy sutil, glfw, glad dll libraries to the bin folder
+# linux 
+
 # SPDX-FileCopyrightText: Copyright (c) 2019 - 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
 # 
@@ -81,7 +84,7 @@
 # This sets up the name of our project.  For our purposes the main thing this controls is
 # the name of the VS solution file.
 project(optixSoltrace)
-link_directories("C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.1.0/build/lib/Release")
+link_directories("${OptiX_INSTALL_DIR}/build/lib/Release")
 
 # This enforces a particular version of CMake that we require to process the script files
 # properly.  We rely on VERSION_GREATER_EQUAL which requires CMake v. 3.7.
@@ -105,12 +108,11 @@ if( POLICY CMP0074 )
   cmake_policy(SET CMP0074 NEW)
 endif()
 
-# Add paths to our CMake code to the module path, so they can be found automatically by
-# CMake.
+# Add paths to our CMake code to the module path, so they can be found automatically by CMake.
 set(CMAKE_MODULE_PATH
-  "${CMAKE_SOURCE_DIR}/../optixSoltraceDemos/CMake"
+  "${CMAKE_SOURCE_DIR}/cmake"
   ${CMAKE_MODULE_PATH}
-  )
+)
 
 # Set the default build to Release.  Note this doesn't do anything for the VS
 # default build target which defaults to Debug when you first start it.
@@ -346,14 +348,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
+# Set the environment variables for PTX directory
+set(ENV{OPTIX_SAMPLES_SDK_PTX_DIR} "${CMAKE_BINARY_DIR}/lib/ptx")
+set(ENV{OPTIX_EXP_SAMPLES_SDK_PTX_DIR} "${CMAKE_BINARY_DIR}/lib/ptx")
+
 # Create a flag for mac which will allow apps to add the local cuda toolkit
 # install path to the app's rpath.
 if( APPLE )
   set( CUDA_TOOLKIT_RPATH_FLAG "-Wl,-rpath,${CUDA_TOOLKIT_ROOT_DIR}/lib" )
 endif()
-
-# Locate the NVRT distribution.  Search the SDK first, then look in the system.
-set(OptiX_INSTALL_DIR "${CMAKE_SOURCE_DIR}/../" CACHE PATH "Path to OptiX installed location.")
 
 # Search for the OptiX libraries and include files.
 find_package(OptiX REQUIRED)
@@ -361,9 +364,9 @@ find_package(OptiX REQUIRED)
 # Add the path to the OptiX headers to our include paths.
 include_directories(
   "${OptiX_INCLUDE}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/cuda"
-  "C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.1.0/SDK"
-  )
+  "${OptiX_INSTALL_DIR}/SDK"
+  "${OptiX_INSTALL_DIR}/SDK/support"
+)
 
 # Select whether to use NVRTC or NVCC to generate PTX
 if( NOT SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT AND SAMPLES_INPUT_GENERATE_OPTIXIR )
@@ -373,8 +376,7 @@ endif()
 
 ##################################################################
 # SUtil compilation
-
-set(SAMPLES_PTX_DIR "${CMAKE_BINARY_DIR}/lib/ptx")
+set(SAMPLES_PTX_DIR "${CMAKE_BINARY_DIR}/lib/ptx/")
 set(SAMPLES_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(CUDA_GENERATED_OUTPUT_DIR ${SAMPLES_PTX_DIR})
@@ -388,8 +390,6 @@ else( WIN32 )
 endif( WIN32 )
 
 set(SAMPLES_CUDA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cuda")
-
-set(SAMPLES_SUPPORT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../optixSoltraceDemos/support")
 
 # NVRTC include paths relative to the sample path
 set(SAMPLES_RELATIVE_INCLUDE_DIRS "\\
@@ -511,12 +511,20 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
     ${generated_files}
     ${cmake_options}
     )
+    
+    # find_package( OpenGL REQUIRED )
 
+    if( UNIX )
+      # On Unix-like systems, shared libraries can use the soname system.
+      set(GLFW_LIB_NAME glfw)
+    else()
+      set(GLFW_LIB_NAME glfw3dll)
+    endif()
+    
   # Most of the samples link against the sutil library and the optix library.  Here is the
   # rule that specifies this linkage.
   target_link_libraries( ${target_name}
-    ${GLFW_LIB_NAME}
-    imgui
+    ${CUDA_LIBRARIES}
     sutil_7_sdk
     )
 
@@ -541,14 +549,7 @@ endfunction()
 # Just make sure you rename all the occurances of the sample's name in the C code as well
 # and the CMakeLists.txt file.
 
-add_subdirectory( optixSoltraceDemo       )
-
-# Our sutil library.  The rules to build it are found in the subdirectory.
-add_subdirectory(sutil)
-
-
-# Third-party support libraries.
-add_subdirectory(support)
+add_subdirectory(optixSoltraceDemo)
 
 #################################################################
 

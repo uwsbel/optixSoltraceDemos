@@ -1,7 +1,10 @@
-#include <glad/glad.h> // Needs to be included before gl_interop
+// TODO: 
+// use a custom function for getInputData from build\lib\ptx\Release or Debug directory 
+
+//#include <glad/glad.h> // Needs to be included before gl_interop
 
 #include <cuda_runtime.h>
-#include <cuda_gl_interop.h>
+//#include <cuda_gl_interop.h>
 
 #include <optix.h>
 #include <optix_function_table_definition.h>
@@ -12,14 +15,14 @@
 
 #include <cuda/Soltrace.h>
 
-#include <sutil/CUDAOutputBuffer.h>
+//#include <sutil/CUDAOutputBuffer.h>
 #include <sutil/Exception.h>
-#include <sutil/Matrix.h>
+//#include <sutil/Matrix.h>
 #include <sutil/Record.h>
 #include <sutil/sutil.h>
 #include <sutil/vec_math.h>
 
-#include <GLFW/glfw3.h>
+//#include <GLFW/glfw3.h>
 #include <iomanip>
 #include <cstring>
 
@@ -297,11 +300,12 @@ void createModules( SoltraceState &state )
     // Create geometry module.
     {
         size_t inputSize = 0;   // Variable to store the size of the CUDA input source.
+		std::cout << "samples: " << SAMPLES_PTX_DIR << std::endl;
         const char* input = sutil::getInputData(
-            nullptr,            // No additional input path.
-            nullptr,            // No output file name.
-            "parallelogram.cu", // Name of the CUDA file containing geometry logic.
-            inputSize           // Output: Size of the input CUDA source code.
+            "optixSoltraceDemo",                      // No additional sample name.
+            SAMPLES_PTX_DIR,              // Use your project's build directory.
+            "parallelogram.cu",           // Name of the CUDA file.
+            inputSize                     // Output: Size of the input CUDA source code.
         );
 
         OPTIX_CHECK_LOG(optixModuleCreate(
@@ -319,8 +323,8 @@ void createModules( SoltraceState &state )
     {
         size_t inputSize = 0;
         const char* input = sutil::getInputData(
-            nullptr,
-            nullptr,
+            "optixSoltraceDemo",                      // No additional sample name.
+            SAMPLES_PTX_DIR,              // Use your project's build directory.
             "materials.cu",
             inputSize
         );
@@ -340,9 +344,9 @@ void createModules( SoltraceState &state )
     {
         size_t inputSize = 0;
         const char* input = sutil::getInputData(
-            nullptr,
-            nullptr,
-            "sun.cu", 
+            "optixSoltraceDemo",                      // No additional sample name.
+            SAMPLES_PTX_DIR,              // Use your project's build directory.
+            "sun.cu",
             inputSize
         );
 
@@ -818,6 +822,8 @@ void writeVectorToCSV(const std::string& filename, const std::vector<float4>& da
 int main(int argc, char* argv[])
 {
     SoltraceState state;
+	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
+	std::cout << "samples ptx dir: " << SAMPLES_PTX_DIR << std::endl;
 
     try
     {

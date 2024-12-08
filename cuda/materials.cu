@@ -1,7 +1,5 @@
 #include <optix.h>
 #include <vector_types.h>
-
-#include "helpers.h"
 #include "Soltrace.h"
 
 // Launch parameters for soltrace

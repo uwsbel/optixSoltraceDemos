@@ -27,10 +27,17 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Locate the OptiX distribution.  Search relative to the SDK first, then look in the system.
+# Check if OptiX_INSTALL_DIR is already defined; if not, read from the environment.
+if(NOT DEFINED OptiX_INSTALL_DIR)
+  set(OptiX_INSTALL_DIR $ENV{OptiX_INSTALL_DIR})
+endif()
 
-# Our initial guess will be within the SDK.
-set(OptiX_INSTALL_DIR "${CMAKE_SOURCE_DIR}/../" CACHE PATH "Path to OptiX installed location.")
+# no env variable, prompt the user to set it
+if(NOT OptiX_INSTALL_DIR)
+  set(OptiX_INSTALL_DIR CACHE PATH "Path to OptiX installed location.")
+  message(FATAL_ERROR "Set OptiX_INSTALL_DIR in your environment or pass it to CMake using -DOptiX_INSTALL_DIR=/path/to/OptiX.")
+endif()
+
 
 # The distribution contains only 64 bit libraries.  Error when we have been mis-configured.
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -54,10 +61,10 @@ find_path(OptiX_INCLUDE
   NAMES optix.h
   PATHS "${OptiX_INSTALL_DIR}/include"
   NO_DEFAULT_PATH
-  )
-find_path(OptiX_INCLUDE
-  NAMES optix.h
-  )
+)
+if(NOT OptiX_INCLUDE)
+  message(FATAL_ERROR "Could not find optix.h in ${OptiX_INSTALL_DIR}/include.")
+endif()
 
 # Check to make sure we found what we were looking for
 function(OptiX_report_error error_message required component )
