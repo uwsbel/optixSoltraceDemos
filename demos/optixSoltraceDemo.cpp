@@ -1,35 +1,27 @@
 // TODO: 
 // use a custom function for getInputData from build\lib\ptx\Release or Debug directory 
 
-//#include <glad/glad.h> // Needs to be included before gl_interop
-
 #include <cuda_runtime.h>
-//#include <cuda_gl_interop.h>
-
+#include <sampleConfig.h>
 #include <optix.h>
 #include <optix_function_table_definition.h>
 #include <optix_stack_size.h>
 #include <optix_stubs.h>
-
-#include <sampleConfig.h>
-
-#include <cuda/Soltrace.h>
-
-//#include <sutil/CUDAOutputBuffer.h>
+#define CUDA_NVRTC_ENABLED
 #include <sutil/Exception.h>
-//#include <sutil/Matrix.h>
 #include <sutil/Record.h>
 #include <sutil/sutil.h>
 #include <sutil/vec_math.h>
 
-//#include <GLFW/glfw3.h>
 #include <iomanip>
 #include <cstring>
-
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
+
+
+#include <cuda/Soltrace.h>
 
 typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
 
@@ -299,6 +291,15 @@ void createModules( SoltraceState &state )
 
     // Create geometry module.
     {
+
+
+#ifdef CUDA_NVRTC_ENABLED
+#pragma message("CUDA_NVRTC_ENABLED is defined")
+#else
+#pragma message("CUDA_NVRTC_ENABLED is NOT defined")
+#endif
+
+
         size_t inputSize = 0;   // Variable to store the size of the CUDA input source.
 		std::cout << "samples: " << SAMPLES_PTX_DIR << std::endl;
         const char* input = sutil::getInputData(

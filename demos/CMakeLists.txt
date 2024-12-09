@@ -27,11 +27,12 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # Point to the prebuilt sutil library in the SDK
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  "C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.1.0/include"
-  "C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.1.0/SDK/"
-  )
+# include_directories(
+#   ${CMAKE_CURRENT_SOURCE_DIR}
+#   "C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.1.0/include"
+#   "C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.1.0/SDK/"
+#   )
+
 
 OPTIX_add_sample_executable( optixSoltraceDemo target_name
   ${SAMPLES_CUDA_DIR}/Soltrace.h
@@ -42,3 +43,6 @@ OPTIX_add_sample_executable( optixSoltraceDemo target_name
   ${SAMPLES_CUDA_DIR}/materials.cu
   optixSoltraceDemo.cpp
 )
+target_compile_definitions(${target_name} PRIVATE CUDA_NVRTC_ENABLED)
+
+copy_dll_to_bin(optixSoltraceDemo)

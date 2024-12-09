@@ -62,6 +62,9 @@ find_path(OptiX_INCLUDE
   PATHS "${OptiX_INSTALL_DIR}/include"
   NO_DEFAULT_PATH
 )
+
+message(STATUS "find optix :" ${OptiX_INSTALL_DIR} )
+
 if(NOT OptiX_INCLUDE)
   message(FATAL_ERROR "Could not find optix.h in ${OptiX_INSTALL_DIR}/include.")
 endif()

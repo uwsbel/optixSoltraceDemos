@@ -84,7 +84,6 @@
 # This sets up the name of our project.  For our purposes the main thing this controls is
 # the name of the VS solution file.
 project(optixSoltrace)
-link_directories("${OptiX_INSTALL_DIR}/build/lib/Release")
 
 # This enforces a particular version of CMake that we require to process the script files
 # properly.  We rely on VERSION_GREATER_EQUAL which requires CMake v. 3.7.
@@ -159,7 +158,7 @@ endif()
 
 # Find at least a 5.0 version of CUDA.
 find_package(CUDA 5.0 REQUIRED)
-
+add_definitions(-DCUDA_NVRTC_ENABLED)
 # If NVRTC was enabled/disabled, reset OPTIXIR/PTX to default
 set( CUDA_NVRTC_ENABLED OFF CACHE BOOL "Use NVRTC to compile OPTIXIR/PTX at run-time instead of NVCC at build-time" )
 if( NOT ( NOT ( NOT CUDA_NVRTC_ENABLED ) ) EQUAL ( NOT ( NOT CUDA_NVRTC_ENABLED_INTERNAL ) ) )
@@ -189,6 +188,8 @@ else()
     option( SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT "Enable support for generating OptiX-IR targetted input files" ON )
   endif()
 endif()
+
+message(STATUS  "cuda nvrtc enabled: ${CUDA_NVRTC_ENABLED}")
 
 # This code looks funny, but CMake doesn't have an equality operator for boolean types
 # (only integer and string). By doing NOT NOT VAL, you can force the original value into 0
@@ -360,6 +361,8 @@ endif()
 
 # Search for the OptiX libraries and include files.
 find_package(OptiX REQUIRED)
+
+link_directories("$<IF:$<CONFIG:Debug>,${OptiX_INSTALL_DIR}/build/lib/Debug,${OptiX_INSTALL_DIR}/build/lib/Release>")
 
 # Add the path to the OptiX headers to our include paths.
 include_directories(
@@ -542,6 +545,26 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
   endif()
 endfunction()
 
+# COPY DLL FILES
+set(DLLS_TO_COPY
+    "${OptiX_INSTALL_DIR}/build/bin/$<CONFIG>/glad.dll"
+    "${OptiX_INSTALL_DIR}/build/bin/$<CONFIG>/glfw3.dll"
+    "${OptiX_INSTALL_DIR}/build/bin/$<CONFIG>/sutil_7_sdk.dll"
+)
+
+# Function to copy DLLs to the appropriate directory
+function(copy_dll_to_bin target_name)
+    # Use generator expressions to ensure the configuration is properly handled
+    foreach(dll ${DLLS_TO_COPY})
+        add_custom_command(TARGET ${target_name} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${dll}"
+            "$<TARGET_FILE_DIR:${target_name}>"
+            COMMENT "Copying ${dll} to $<TARGET_FILE_DIR:${target_name}>"
+        )
+    endforeach()
+endfunction()
+
 #########################################################
 #  List of samples found in subdirectories.
 #
@@ -549,7 +572,7 @@ endfunction()
 # Just make sure you rename all the occurances of the sample's name in the C code as well
 # and the CMakeLists.txt file.
 
-add_subdirectory(optixSoltraceDemo)
+add_subdirectory(demos)
 
 #################################################################
 
