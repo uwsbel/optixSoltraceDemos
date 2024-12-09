@@ -87,7 +87,7 @@ project(optixSoltrace)
 
 # This enforces a particular version of CMake that we require to process the script files
 # properly.  We rely on VERSION_GREATER_EQUAL which requires CMake v. 3.7.
-cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -156,9 +156,7 @@ if(WIN32)
   option(CUDA_USE_LOCAL_ENV "Pass the '--use-local-env' option to NVCC; only applies to initial configure" ON)
 endif()
 
-# Find at least a 5.0 version of CUDA.
-find_package(CUDA 5.0 REQUIRED)
-add_definitions(-DCUDA_NVRTC_ENABLED)
+find_package(CUDA 11.0 REQUIRED)
 # If NVRTC was enabled/disabled, reset OPTIXIR/PTX to default
 set( CUDA_NVRTC_ENABLED OFF CACHE BOOL "Use NVRTC to compile OPTIXIR/PTX at run-time instead of NVCC at build-time" )
 if( NOT ( NOT ( NOT CUDA_NVRTC_ENABLED ) ) EQUAL ( NOT ( NOT CUDA_NVRTC_ENABLED_INTERNAL ) ) )
@@ -167,29 +165,9 @@ if( NOT ( NOT ( NOT CUDA_NVRTC_ENABLED ) ) EQUAL ( NOT ( NOT CUDA_NVRTC_ENABLED_
 endif()
 set( CUDA_NVRTC_ENABLED_INTERNAL ${CUDA_NVRTC_ENABLED} CACHE INTERNAL "Previous configured value (NVRTC)" FORCE )
 
-if( CUDA_NVRTC_ENABLED )
-  if( CUDA_VERSION VERSION_LESS 12.0 )
-    if( SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT )
-      message( SEND_ERROR "CUDA_NVRTC_ENABLED is not compatible with SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT in CUDA versions less than 12.0" )
-    else()
-      option( SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT "Enable support for generating OptiX-IR targetted input files" OFF )
-    endif()
-  else()
-    option( SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT "Enable support for generating OptiX-IR targetted input files" ON )
-  endif()
-else()
-  if( CUDA_VERSION VERSION_LESS 11.7 )
-    if( SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT )
-      message( SEND_ERROR "SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT is not supported in CUDA versions less than 11.7" )
-    else()
-      option( SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT "Enable support for generating OptiX-IR targetted input files" OFF )
-    endif()
-  else()
-    option( SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT "Enable support for generating OptiX-IR targetted input files" ON )
-  endif()
-endif()
+# Disable OptiXIR support
+set(SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT OFF CACHE BOOL "Enable support for generating OptiX-IR targetted input files" FORCE)
 
-message(STATUS  "cuda nvrtc enabled: ${CUDA_NVRTC_ENABLED}")
 
 # This code looks funny, but CMake doesn't have an equality operator for boolean types
 # (only integer and string). By doing NOT NOT VAL, you can force the original value into 0

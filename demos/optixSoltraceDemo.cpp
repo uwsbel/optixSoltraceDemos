@@ -1,5 +1,7 @@
 // TODO: 
-// use a custom function for getInputData from build\lib\ptx\Release or Debug directory 
+// refactor, so things like loading shaders and creating modules are in separate cpp files
+
+
 
 #include <cuda_runtime.h>
 #include <sampleConfig.h>
@@ -7,7 +9,6 @@
 #include <optix_function_table_definition.h>
 #include <optix_stack_size.h>
 #include <optix_stubs.h>
-#define CUDA_NVRTC_ENABLED
 #include <sutil/Exception.h>
 #include <sutil/Record.h>
 #include <sutil/sutil.h>
@@ -178,6 +179,25 @@ void printFloat3(const char* label, const float3& vec) {
     std::cout << label << ": (" << vec.x << ", " << vec.y << ", " << vec.z << ")\n";
 }
 
+// Load ptx given shader strings 
+std::string loadPtxFromFile(const std::string& kernel_name) {
+    // Construct the full PTX file path based on the kernel name
+    const std::string ptx_file = std::string(SAMPLES_PTX_DIR) + "optixSoltraceDemo_generated_" + kernel_name + ".cu.ptx";
+
+    std::cout << "PTX file name: " << ptx_file << "\n";
+    // Read the PTX file into a string
+    std::ifstream f(ptx_file);
+    if (!f.good()) {
+        throw std::runtime_error("PTX file not found: " + ptx_file);
+    }
+
+    std::stringstream source_buffer;
+    source_buffer << f.rdbuf();
+    return source_buffer.str(); // Return the PTX content
+}
+
+
+
 // Build custom primitives (parallelograms for now, TODO generalize)
 void createGeometry(SoltraceState& state)
 {
@@ -292,29 +312,22 @@ void createModules( SoltraceState &state )
     // Create geometry module.
     {
 
-
-#ifdef CUDA_NVRTC_ENABLED
-#pragma message("CUDA_NVRTC_ENABLED is defined")
-#else
-#pragma message("CUDA_NVRTC_ENABLED is NOT defined")
-#endif
-
-
         size_t inputSize = 0;   // Variable to store the size of the CUDA input source.
-		std::cout << "samples: " << SAMPLES_PTX_DIR << std::endl;
-        const char* input = sutil::getInputData(
-            "optixSoltraceDemo",                      // No additional sample name.
-            SAMPLES_PTX_DIR,              // Use your project's build directory.
-            "parallelogram.cu",           // Name of the CUDA file.
-            inputSize                     // Output: Size of the input CUDA source code.
-        );
+        //const char* input = sutil::getInputData(
+        //    "optixSoltraceDemo",                      // No additional sample name.
+        //    SAMPLES_PTX_DIR,              // Use your project's build directory.
+        //    "parallelogram.cu",           // Name of the CUDA file.
+        //    inputSize                     // Output: Size of the input CUDA source code.
+        //);
+
+		std::string ptx = loadPtxFromFile("parallelogram");
 
         OPTIX_CHECK_LOG(optixModuleCreate(
             state.context,                       // OptiX context for the application.
             &module_compile_options,             // Module compilation options.
             &state.pipeline_compile_options,     // Pipeline-level compile options.
-            input,                               // CUDA source code as input.
-            inputSize,                           // Size of the CUDA source code.
+            ptx.c_str(),                               // CUDA source code as input.
+            ptx.size(),                           // Size of the CUDA source code.
             LOG, &LOG_SIZE,                      // Logs for diagnostic output.
             &state.geometry_module               // Output: Handle for the compiled module.
         ));
@@ -322,20 +335,13 @@ void createModules( SoltraceState &state )
 
     // Create shading/materials module.
     {
-        size_t inputSize = 0;
-        const char* input = sutil::getInputData(
-            "optixSoltraceDemo",                      // No additional sample name.
-            SAMPLES_PTX_DIR,              // Use your project's build directory.
-            "materials.cu",
-            inputSize
-        );
-
+		std::string ptx = loadPtxFromFile("materials");
         OPTIX_CHECK_LOG(optixModuleCreate(
             state.context,
             &module_compile_options,
             &state.pipeline_compile_options,
-            input,
-            inputSize,
+            ptx.c_str(),
+            ptx.size(),
             LOG, &LOG_SIZE,
             &state.shading_module
         ));
@@ -343,20 +349,14 @@ void createModules( SoltraceState &state )
 
     // Create the sun module.
     {
-        size_t inputSize = 0;
-        const char* input = sutil::getInputData(
-            "optixSoltraceDemo",                      // No additional sample name.
-            SAMPLES_PTX_DIR,              // Use your project's build directory.
-            "sun.cu",
-            inputSize
-        );
+        std::string ptx = loadPtxFromFile("sun");
 
         OPTIX_CHECK_LOG(optixModuleCreate(
             state.context,
             &module_compile_options,
             &state.pipeline_compile_options,
-            input,
-            inputSize,
+            ptx.c_str(),
+            ptx.size(),
             LOG, &LOG_SIZE,
             &state.sun_module
         ));
