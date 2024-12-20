@@ -13,6 +13,7 @@
 #include <sutil/Record.h>
 #include <sutil/sutil.h>
 #include <sutil/vec_math.h>
+#include <chrono>
 
 #include <iomanip>
 #include <cstring>
@@ -196,7 +197,122 @@ std::string loadPtxFromFile(const std::string& kernel_name) {
     return source_buffer.str(); // Return the PTX content
 }
 
+// PRE-PROCESSING SCENE GEOMETRY AND SUN DEFINITION
+// Compute the sun's coordinate frame
+void computeSunFrame(SoltraceState& state, float3& sun_u, float3& sun_v) {
+    float3 sun_vector_hat = normalize(state.params.sun_vector);
+    float3 axis = (abs(state.params.sun_vector.x) < 0.9f) ? make_float3(1.0f, 0.0f, 0.0f) : make_float3(0.0f, 1.0f, 0.0f);
+    sun_u = normalize(cross(axis, sun_vector_hat));
+    sun_v = normalize(cross(sun_vector_hat, sun_u));
+}
 
+// Find the distance to the closest object along the sun vector
+float computeSunPlaneDistance(SoltraceState& state, std::vector<soltrace::BoundingBoxVertex>& bounding_box_vertices) {
+    float3 sun_vector_hat = normalize(state.params.sun_vector);
+    // Max distance from Origin along sun vector
+    float max_distance = 0.0f;
+    for (auto& vertex : bounding_box_vertices) {
+        float distance = dot(vertex.point, sun_vector_hat);
+        vertex.distance = distance;
+        if (distance > max_distance) {
+            max_distance = distance;
+        }
+    }
+    return max_distance;
+}
+
+// Project a point onto the plane at distance d along the sun vector
+float3 projectOntoPlaneAtDistance(SoltraceState& state, const float3& point, float d) {
+    float3 sun_vector_hat = normalize(state.params.sun_vector);
+    float3 plane_center = d * sun_vector_hat;
+    return point - dot(point - plane_center, sun_vector_hat) * sun_vector_hat;
+}
+
+// Compute the bounding box of all projected objects onto sun plane
+void computeBoundingSunBox(SoltraceState& state, std::vector<soltrace::BoundingBoxVertex>& bounding_box_vertices) {
+    float d = computeSunPlaneDistance(state, bounding_box_vertices);
+
+    float3 sun_u, sun_v;
+    computeSunFrame(state, sun_u, sun_v);
+
+    // Project points onto the sun plane
+    std::vector<soltrace::ProjectedPoint> projected_points;
+    for (const auto& vertex : bounding_box_vertices) {
+        // Compute the buffer for this point
+        float buffer = vertex.distance * state.params.max_sun_angle;
+        // Project the point onto the sun plane
+        float3 projected_point = projectOntoPlaneAtDistance(state, vertex.point, d);
+        float u = dot(projected_point, sun_u);
+        float v = dot(projected_point, sun_v);
+        soltrace::ProjectedPoint projected_point_uv = { buffer, make_float2(u, v) };
+        projected_points.emplace_back(projected_point_uv);
+    }
+
+    // Find bounding box in the sun's frame
+    float u_min = FLT_MAX;  // Initialize to the largest possible float
+    float u_max = -FLT_MAX; // Initialize to the smallest possible float
+    float v_min = FLT_MAX;
+    float v_max = -FLT_MAX;
+    for (const auto& point : projected_points) {
+        u_min = fminf(u_min, point.point.x - point.buffer);
+        u_max = fmaxf(u_max, point.point.x + point.buffer);
+        v_min = fminf(v_min, point.point.y - point.buffer);
+        v_max = fmaxf(v_max, point.point.y + point.buffer);
+    }
+    //std::cout << "u min: " << u_min << "\n";
+    //std::cout << "u max: " << u_max << "\n";
+    //std::cout << "v min: " << v_min << "\n";
+    //std::cout << "v max: " << v_max << "\n";
+
+    // Define sun bounding box vertices in the sun's frame
+    std::vector<float2> sun_bounds_sun_frame = {
+        make_float2(u_min, v_min), make_float2(u_max, v_min),   // bottom-left, bottom-right
+        make_float2(u_max, v_max), make_float2(u_min, v_max)    // top-right, top-left
+    };
+
+    // Transform sun bounding box vertices to global frame
+    std::vector<float3> sun_bounds_global_frame;
+    for (const auto& vertex : sun_bounds_sun_frame) {
+        float3 global_vertex = vertex.x * sun_u + vertex.y * sun_v + d * normalize(state.params.sun_vector);
+        sun_bounds_global_frame.push_back(global_vertex);
+    }
+
+    state.params.sun_v0 = sun_bounds_global_frame[0];   // bottom-left
+    state.params.sun_v1 = sun_bounds_global_frame[1];   // bottom-right
+    state.params.sun_v2 = sun_bounds_global_frame[2];   // top-right
+    state.params.sun_v3 = sun_bounds_global_frame[3];   // top-left
+}
+
+// Function to compute all 8 vertices of an AABB
+void getAABBVertices(const OptixAabb& aabb, std::vector<soltrace::BoundingBoxVertex>& vertices) {
+    // Min and max corners
+    float3 minCorner = make_float3(aabb.minX, aabb.minY, aabb.minZ);
+    float3 maxCorner = make_float3(aabb.maxX, aabb.maxY, aabb.maxZ);
+
+    // Compute the 8 vertices and distances
+    std::vector<float3> points = {
+        make_float3(minCorner.x, minCorner.y, minCorner.z), // 0
+        make_float3(maxCorner.x, minCorner.y, minCorner.z), // 1
+        make_float3(minCorner.x, maxCorner.y, minCorner.z), // 2
+        make_float3(maxCorner.x, maxCorner.y, minCorner.z), // 3
+        make_float3(minCorner.x, minCorner.y, maxCorner.z), // 4
+        make_float3(maxCorner.x, minCorner.y, maxCorner.z), // 5
+        make_float3(minCorner.x, maxCorner.y, maxCorner.z), // 6
+        make_float3(maxCorner.x, maxCorner.y, maxCorner.z)  // 7
+    };
+
+    for (const auto& point : points) {
+        float distance = 0.0f;
+        vertices.push_back({ distance, point });
+    }
+}
+
+// Function to collect AABB vertices for all objects
+void collectAllAABBVertices(const OptixAabb aabbs[], int count, std::vector<soltrace::BoundingBoxVertex>& allVertices) {
+    for (int i = 0; i < count; ++i) {
+        getAABBVertices(aabbs[i], allVertices);
+    }
+}
 
 // Build custom primitives (parallelograms for now, TODO generalize)
 void createGeometry(SoltraceState& state)
@@ -207,31 +323,15 @@ void createGeometry(SoltraceState& state)
                                     parallelogram_bound(heliostat3.v1, heliostat3.v2, heliostat3.anchor),
                                     parallelogram_bound(receiver.v1, receiver.v2, receiver.anchor) };
 
-    // Initialize the overall min and max using the first object's AABB
-    float3 overallMin = { aabb[0].minX, aabb[0].minY, aabb[0].minZ };
-    float3 overallMax = { aabb[0].maxX, aabb[0].maxY, aabb[0].maxZ };
 
-    // Loop through the remaining AABBs to find the overall scene bounds
-    for (int i = 1; i < OBJ_COUNT; ++i) {
-        float3 currentMin = { aabb[i].minX, aabb[i].minY, aabb[i].minZ };
-        float3 currentMax = { aabb[i].maxX, aabb[i].maxY, aabb[i].maxZ };
+    // Container to store all vertices
+    std::vector<soltrace::BoundingBoxVertex> bounding_box_vertices;
 
-        // Update the overall min and max
-        overallMin = fminf(overallMin, currentMin);
-        overallMax = fmaxf(overallMax, currentMax);
-    }
+    // Collect all vertices from AABBs
+    collectAllAABBVertices(aabb, OBJ_COUNT, bounding_box_vertices);
 
-    // DEBUG: Print the results
-    /*
-    printFloat3("Overall Min", overallMin);
-    printFloat3("Overall Max", overallMax);
-    */
-
-    // Allocate a result array to return the overall min and max
-    state.params.scene_aabb = {
-        overallMin.x, overallMin.y, overallMin.z,
-        overallMax.x, overallMax.y, overallMax.z
-    };
+    // Pass the vertices to computeBoundingSunBox
+    computeBoundingSunBox(state, bounding_box_vertices);
 
     // Allocate memory on the device for the AABB array.
     CUdeviceptr d_aabb;
@@ -734,6 +834,8 @@ void initLaunchParams( SoltraceState& state )
 
     // Allocate memory for the hit point buffer.
     // The size depends on the sun (ray generation resolution) parameters and the maximum ray depth.
+    // Start the timer
+    auto start_buff = std::chrono::high_resolution_clock::now();
     const size_t hit_point_buffer_size = state.params.width * state.params.height * sizeof(float4) * state.params.max_depth;
     
     CUDA_CHECK(cudaMalloc(
@@ -826,10 +928,14 @@ int main(int argc, char* argv[])
 	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
 	std::cout << "samples ptx dir: " << SAMPLES_PTX_DIR << std::endl;
 
+    // Start the timer
+    auto start = std::chrono::high_resolution_clock::now();
+
     try
     {
         // Initialize simulation parameters
-        state.params.sun_center = make_float3(0.0f, 0.0f, 20.0f);
+        //state.params.sun_center = make_float3(0.0f, 0.0f, state.params.sun_radius);state.params.sun_center = make_float3(0.0f, 0.0f, state.params.sun_radius);    // z-component computed in raygen based on dims of sun
+        state.params.sun_vector = make_float3(0.0f, 50.0f, 100.0f);
         state.params.max_sun_angle = 0.00465;     // 4.65 mrad
         state.params.num_sun_points = 1000000;
 
@@ -847,6 +953,9 @@ int main(int argc, char* argv[])
         CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void*>(state.d_params), &state.params,
             sizeof(soltrace::LaunchParams), cudaMemcpyHostToDevice, state.stream));
 
+        // Start the timer
+        auto start_buff = std::chrono::high_resolution_clock::now();
+
         // Launch the OptiX pipeline
         OPTIX_CHECK( optixLaunch(
         state.pipeline,     // OptiX pipeline
@@ -861,6 +970,16 @@ int main(int argc, char* argv[])
 
         CUDA_SYNC_CHECK();
 
+        // Stop the timer
+        auto end_buff = std::chrono::high_resolution_clock::now();
+        auto duration_ms_buff = std::chrono::duration_cast<std::chrono::milliseconds>(end_buff - start_buff);
+        std::cout << "Execution time ray launch: " << duration_ms_buff.count() << " milliseconds" << std::endl;
+
+        // Stop the timer
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout << "Execution time full sim: " << duration_ms.count() << " milliseconds" << std::endl;
+
         // Copy hit point results from device memory
         std::vector<float4> hp_output_buffer(state.params.width * state.params.height * state.params.max_depth);
         CUDA_CHECK(cudaMemcpy(hp_output_buffer.data(), state.params.hit_point_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
@@ -871,7 +990,7 @@ int main(int argc, char* argv[])
         CUDA_CHECK(cudaMemcpy(rd_output_buffer.data(), state.params.reflected_dir_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
         */
 
-        writeVectorToCSV("test_output_new_sun_model_v13.csv", hp_output_buffer);
+        writeVectorToCSV("test-hit_counts-1000000_rays_with_buffer.csv", hp_output_buffer);
 
         cleanupState(state);
     }
