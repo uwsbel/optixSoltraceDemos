@@ -347,6 +347,7 @@ include_directories(
   "${OptiX_INCLUDE}"
   "${OptiX_INSTALL_DIR}/SDK"
   "${OptiX_INSTALL_DIR}/SDK/support"
+  "${OptiX_INCLUDE}/internal"
 )
 
 # Select whether to use NVRTC or NVCC to generate PTX

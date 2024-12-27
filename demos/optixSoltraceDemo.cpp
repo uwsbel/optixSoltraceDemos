@@ -6,6 +6,7 @@
 #include <cuda_runtime.h>
 #include <sampleConfig.h>
 #include <optix.h>
+#include <internal/optix_device_impl.h>
 #include <optix_function_table_definition.h>
 #include <optix_stack_size.h>
 #include <optix_stubs.h>
@@ -177,6 +178,7 @@ static void buildGas(
 // Print a float3 structure
 void printFloat3(const char* label, const float3& vec) {
     std::cout << label << ": (" << vec.x << ", " << vec.y << ", " << vec.z << ")\n";
+
 }
 
 // Load ptx given shader strings 
