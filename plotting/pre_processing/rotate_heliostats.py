@@ -126,25 +126,25 @@ def calculate_rotated_corners(position, surface_normal, width, height):
 
 
 
-    # edge1 = rotated_corners[2] - rotated_corners[1]   # bottom edge +x direction
-    # edge2 = rotated_corners[0] - rotated_corners[1]   # left edge +y direction
-    # normal_rect = np.cross(edge1, edge2)
-    # normal_rect /= np.linalg.norm(normal_rect)
+    edge1 = rotated_corners[2] - rotated_corners[1]   # bottom edge +x direction
+    edge2 = rotated_corners[0] - rotated_corners[1]   # left edge +y direction
+    normal_rect = np.cross(edge1, edge2)
+    normal_rect /= np.linalg.norm(normal_rect)
     # print("input and output normal diff: ", np.linalg.norm(np.array([nx, ny, nz]) - normal_rect))
     # print("z of 2 vertices bottom diff : ", rotated_corners[1][2] - rotated_corners[2][2])
 
     # check that normal_unit and normal_rect are parallel (and same direction! )
-    # assert np.allclose(np.array([nx, ny, nz]), normal_rect)
-    # # check that bottom edge is parallel to xy plane
-    # assert np.allclose(edge1[2] , 0)
+    assert np.allclose(np.array([nx, ny, nz]), normal_rect)
+    # check that bottom edge is parallel to xy plane
+    assert np.allclose(edge1[2] , 0)
     
     return rotated_corners
 
 # read csv file
 folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/large_scene/"
-filename = folder_dir + "small-system-coordinates.csv"
+# filename = folder_dir + "small-system-coordinates.csv"
 # filename = folder_dir + "small-system.stinput"
-# filename = folder_dir + "large-system-coordinates.csv"
+filename = folder_dir + "large-system-coordinates.csv"
 loc_x, loc_y, loc_z, aim_pt_x, aim_pt_y, aim_pt_z = read_input(filename)
 
 PLOT = False
@@ -176,18 +176,10 @@ for i in range(test_id):
     position = np.array([loc_x[i], loc_y[i], loc_z[i]])
     rotated_corners = calculate_rotated_corners(position, normalized, parallelogram_dim_x, parallelogram_dim_y)
 
-
-    for i in range(test_id):
-        normal = np.array([aim_pt_x[i] - loc_x[i], aim_pt_y[i] - loc_y[i], aim_pt_z[i] - loc_z[i]])
-        normalized = normal / np.linalg.norm(normal)
-
-        position = np.array([loc_x[i], loc_y[i], loc_z[i]])
-        rotated_corners = calculate_rotated_corners(position, normalized, parallelogram_dim_x, parallelogram_dim_y)
-
-        # write the results to the csv file
-        csvwriter.writerow([rotated_corners[0][0], rotated_corners[0][1], rotated_corners[0][2],
-                            rotated_corners[1][0], rotated_corners[1][1], rotated_corners[1][2],
-                            rotated_corners[2][0], rotated_corners[2][1], rotated_corners[2][2]])
+    # write the results to the csv file
+    csvwriter.writerow([rotated_corners[0][0], rotated_corners[0][1], rotated_corners[0][2],
+                        rotated_corners[1][0], rotated_corners[1][1], rotated_corners[1][2],
+                        rotated_corners[2][0], rotated_corners[2][1], rotated_corners[2][2]])
 
 
     if PLOT:
