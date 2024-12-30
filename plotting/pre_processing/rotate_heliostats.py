@@ -4,6 +4,26 @@ import numpy as np
 import math
 import io
 
+# writes the rotated corners of the heliostats to a csv file, given the aim points and location of the center of the heliostats
+# the input file can be either a .csv or a .stinput, generated from solar pilot
+# each row is a heliostat element
+# the columns are the global coordinates of the 3 corners of the heliostat, 0, 1 and 2 (the 4th corner can be calculated)
+# rectangle is along x and y axis, where x is the long edge of the rectangle
+# edge 12 is the bottom edge that is parallel to the global xy plane
+# surface normal to the aim point is +z direction
+
+#
+#           ^ +y
+#           |
+#    0 ----------- 3
+#    |      |      |
+# -----------------------> +x
+#    |      |      |
+#    1 ----------- 2
+#           |
+
+
+
 parallelogram_dim_x = 9
 parallelogram_dim_y = 6
 
@@ -204,4 +224,3 @@ with open(output_filename, mode='w', newline='') as csvfile:
 if PLOT:
     ax.scatter(loc_x[0:test_id], loc_y[0:test_id], loc_z[0:test_id], c='b', marker='s')
     plt.show()
-
