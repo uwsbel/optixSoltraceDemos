@@ -7,7 +7,7 @@ import io
 # writes the rotated corners of the heliostats to a csv file, given the aim points and location of the center of the heliostats
 # the input file can be either a .csv or a .stinput, generated from solar pilot
 # each row is a heliostat element
-# the columns are the global coordinates of the 3 corners of the heliostat, 0, 1 and 2 (the 4th corner can be calculated)
+# the columns are the global coordinates v1,v2 and the anchor point
 # rectangle is along x and y axis, where x is the long edge of the rectangle
 # edge 12 is the bottom edge that is parallel to the global xy plane
 # surface normal to the aim point is +z direction
@@ -143,8 +143,8 @@ def calculate_rotated_corners(position, surface_normal, width, height):
 # read csv file
 folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/large_scene/"
 # filename = folder_dir + "small-system-coordinates.csv"
-# filename = folder_dir + "small-system.stinput"
-filename = folder_dir + "large-system-coordinates.csv"
+filename = folder_dir + "small-system.stinput"
+# filename = folder_dir + "large-system-coordinates.csv"
 loc_x, loc_y, loc_z, aim_pt_x, aim_pt_y, aim_pt_z = read_input(filename)
 
 PLOT = False
@@ -165,7 +165,7 @@ test_id = len(loc_x)
 # header is x,y,z,nx,ny,nz,R0_x,R0_y,R0_z,R1_x,R1_y,R1_z,R2_x,R2_y,R2_z,R3_x,R3_y,R3_z
 output_stream = io.StringIO()
 csvwriter = csv.writer(output_stream)
-csvwriter.writerow(['R0_x', 'R0_y', 'R0_z', 'R1_x', 'R1_y', 'R1_z', 'R2_x', 'R2_y', 'R2_z'])
+csvwriter.writerow(['v1_x', 'v1_y', 'v1_z', 'v2_x', 'v2_y', 'v2_z', 'anchor_x', 'anchor_y', 'anchor_z'])
 
 for i in range(test_id):
     print("element: " + str(i))
@@ -176,11 +176,13 @@ for i in range(test_id):
     position = np.array([loc_x[i], loc_y[i], loc_z[i]])
     rotated_corners = calculate_rotated_corners(position, normalized, parallelogram_dim_x, parallelogram_dim_y)
 
-    # write the results to the csv file
-    csvwriter.writerow([rotated_corners[0][0], rotated_corners[0][1], rotated_corners[0][2],
-                        rotated_corners[1][0], rotated_corners[1][1], rotated_corners[1][2],
-                        rotated_corners[2][0], rotated_corners[2][1], rotated_corners[2][2]])
+    # vector v1 points from 2 to 1, vector v2 points from 2 to 3, anchor is point 2 
+    v1 = rotated_corners[1] - rotated_corners[2]
+    v2 = rotated_corners[3] - rotated_corners[2]
+    anchor = rotated_corners[2]
 
+    # write the results to the csv file
+    csvwriter.writerow([v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], anchor[0], anchor[1], anchor[2]])
 
     if PLOT:
         # Plot the rotated corners
@@ -216,3 +218,25 @@ with open(output_filename, mode='w', newline='') as csvfile:
 if PLOT:
     ax.scatter(loc_x[0:test_id], loc_y[0:test_id], loc_z[0:test_id], c='b', marker='s')
     plt.show()
+
+# now do the same for the receiver (which is one rectangle)
+# global coordinate (0,0,80)
+# aim point (0, 1000, 80)
+# surface normal is (0,1,0)
+# size is 9 by 7
+receiver_pos = np.array([0, 0, 80])
+receiver_normal = np.array([0, 1, 0])
+receiver_dim_x = 9
+receiver_dim_y = 7
+
+receiver_rotated_corners = calculate_rotated_corners(receiver_pos, receiver_normal, receiver_dim_x, receiver_dim_y)
+
+# print out results to the console
+v1 = receiver_rotated_corners[1] - receiver_rotated_corners[2]
+v2 = receiver_rotated_corners[3] - receiver_rotated_corners[2]
+anchor = receiver_rotated_corners[2]
+
+print("receiver results: ")
+print("v1: ", v1)
+print("v2: ", v2)
+print("anchor: ", anchor)
