@@ -26,12 +26,6 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# Point to the prebuilt sutil library in the SDK
-# include_directories(
-#   ${CMAKE_CURRENT_SOURCE_DIR}
-#   "C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.1.0/include"
-#   "C:/ProgramData/NVIDIA Corporation/OptiX SDK 8.1.0/SDK/"
-#   )
 
 
 OPTIX_add_sample_executable( optixSoltraceDemo target_name
@@ -46,3 +40,17 @@ OPTIX_add_sample_executable( optixSoltraceDemo target_name
 target_compile_definitions(${target_name} PRIVATE CUDA_NVRTC_ENABLED)
 
 copy_dll_to_bin(optixSoltraceDemo)
+
+OPTIX_add_sample_executable( demo_large_scene target_name
+  ${SAMPLES_CUDA_DIR}/Soltrace.h
+  ${SAMPLES_CUDA_DIR}/GeometryDataST.h
+  ${SAMPLES_CUDA_DIR}/MaterialDataST.h
+  ${SAMPLES_CUDA_DIR}/sun.cu
+  ${SAMPLES_CUDA_DIR}/parallelogram.cu
+  ${SAMPLES_CUDA_DIR}/materials.cu
+  demo_large_scene.cpp
+)
+target_compile_definitions(${target_name} PRIVATE CUDA_NVRTC_ENABLED)
+
+copy_dll_to_bin(demo_large_scene)
+

@@ -47,7 +47,7 @@ def plot_trace(df, nrays:int = 100000, ntrace:int=100, show_sun_vector:bool=Fals
         fig = go.Figure(data=go.Scatter3d(x=loc_x, y=loc_y, z=loc_z, mode='markers', marker=md ), layout=layout )
 
         # Generate line traces for a subset of randomly selected rays
-        for i in numpy.random.choice(raynum, size=50, replace=False):
+        for i in numpy.random.choice(raynum, size=200, replace=False):
             dfr = df[df.number == i]    #find all rays numbered 'i'
             ray_x = dfr.loc_x 
             ray_y = dfr.loc_y
@@ -70,8 +70,13 @@ def plot_trace(df, nrays:int = 100000, ntrace:int=100, show_sun_vector:bool=Fals
 
 
 if __name__ == "__main__":
-     
-    df = pd.read_csv('test_output_new_sun_model_v15.csv')
+    # folder directory
+    folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/build_Allie/bin/Release/"
+
+    filename = folder_dir + "demo_large_scene-hit_counts-1000000_rays_with_buffer.csv"
+    # filename = folder_dir + "toyproblem-hit_counts-1000000_rays_with_buffer.csv"
+
+    df = pd.read_csv(filename)
 
     print(df)
-    plot_trace(df, nrays=100000)
+    plot_trace(df, nrays=100000, ntrace=200)

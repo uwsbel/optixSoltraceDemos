@@ -44,21 +44,21 @@ def extract_receiver_points(filename, solver="optix"):
 
 
 if __name__ == "__main__":
-    # SOLVER = "optix"
-    # folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/build_Allie/bin/Release/"
-    # filename = folder_dir + "toyproblem-hit_counts-1000000_rays_with_buffer.csv"
-    # # v1, v2 and anchor points of the receiver
-    # v1 = np.array([2.0, 0.0, 0.0])
-    # v2 = np.array([0.0, 1.788854, 0.894428])
-    # anchor = np.array([-1.0, -0.894427, 9.552786])
+    SOLVER = "optix"
+    folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/build_Allie/bin/Release/"
+    filename = folder_dir + "toyproblem-hit_counts-1000000_rays_with_buffer.csv"
+    # v1, v2 and anchor points of the receiver
+    v1 = np.array([2.0, 0.0, 0.0])
+    v2 = np.array([0.0, 1.788854, 0.894428])
+    anchor = np.array([-1.0, -0.894427, 9.552786])
 
 
-    SOLVER = "solTrace"
-    folder = "C:/Users/fang/Documents/NREL_SOLAR/large_scene/"
-    filename = folder + "raydata_from_soltrace.csv"
-    v1 = np.array([9.0, 0.0, 0.0])
-    v2 = np.array([0.0, 0.0, 7.0])
-    anchor = np.array([-4.5, 0.0, 76.5])
+    # SOLVER = "solTrace"
+    # folder = "C:/Users/fang/Documents/NREL_SOLAR/large_scene/"
+    # filename = folder + "raydata_from_soltrace.csv"
+    # v1 = np.array([9.0, 0.0, 0.0])
+    # v2 = np.array([0.0, 0.0, 7.0])
+    # anchor = np.array([-4.5, 0.0, 76.5])
 
 
 
