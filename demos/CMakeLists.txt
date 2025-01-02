@@ -38,10 +38,11 @@ OPTIX_add_sample_executable( optixSoltraceDemo target_name
   ${SAMPLES_CUDA_DIR}/Soltrace.h
   ${SAMPLES_CUDA_DIR}/GeometryDataST.h
   ${SAMPLES_CUDA_DIR}/MaterialDataST.h
+  ${SAMPLES_CUDA_DIR}/Preprocess.h
   ${SAMPLES_CUDA_DIR}/sun.cu
   ${SAMPLES_CUDA_DIR}/parallelogram.cu
   ${SAMPLES_CUDA_DIR}/materials.cu
-  optixSoltraceDemo.cpp
+  largeSceneDemo.cpp
 )
 target_compile_definitions(${target_name} PRIVATE CUDA_NVRTC_ENABLED)
 
