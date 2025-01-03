@@ -8,18 +8,6 @@
 #include <sutil/Exception.h>
 
 
-//const GeometryData::Parallelogram receiver(
-//    make_float3(9.0f, 0.0f, 0.0f),    // v1
-//    make_float3(0.0f, 0.0f, 7.0f),    // v2
-//    make_float3(-4.5f, 0.0f, 76.5f)     // anchor
-//);
-
-
-
-int foo(int a, GeometryData::Parallelogram test) {
-    return a + 1;
-}   
-
 // PRE-PROCESSING SCENE GEOMETRY AND SUN DEFINITION
 // Compute the sun's coordinate frame
 void computeSunFrame(SoltraceState& state, float3& sun_u, float3& sun_v) {
@@ -57,9 +45,6 @@ void getAABBVertices(const OptixAabb& aabb, std::vector<soltrace::BoundingBoxVer
     // Min and max corners
     float3 minCorner = make_float3(aabb.minX, aabb.minY, aabb.minZ);
     float3 maxCorner = make_float3(aabb.maxX, aabb.maxY, aabb.maxZ);
-
-    std::cout << "Min corner: (" << minCorner.x << ", " << minCorner.y << ", " << minCorner.z << ")\n";
-    std::cout << "Max corner: (" << maxCorner.x << ", " << maxCorner.y << ", " << maxCorner.z << ")\n";
 
     // Compute the 8 vertices and distances
     std::vector<float3> points = {
@@ -251,7 +236,6 @@ std::vector<GeometryData::Parallelogram> GenerateHeliostatsFromFile(std::string 
 		);
 
 		heliostats_list.push_back(heliostat);
-		printf("added heliostat %d at location %.4f, %.4f, %.4f\n", num_heliostats, values[6], values[7], values[8]);
 	}
 
 	std::cout << "number of heliostats: " << num_heliostats << std::endl;

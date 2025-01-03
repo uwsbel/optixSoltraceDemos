@@ -45,19 +45,19 @@ def extract_receiver_points(filename, solver="optix"):
 
 if __name__ == "__main__":
     SOLVER = "optix"
-    folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/build_Allie/bin/Release/"
-    filename = folder_dir + "toyproblem-hit_counts-1000000_rays_with_buffer.csv"
+    folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/build/bin/Release/"
+    filename = folder_dir + "30_elements_1000000_rays.csv"
     # v1, v2 and anchor points of the receiver
-    v1 = np.array([2.0, 0.0, 0.0])
-    v2 = np.array([0.0, 1.788854, 0.894428])
-    anchor = np.array([-1.0, -0.894427, 9.552786])
+    v1 = np.array([9.0, 0.0, 0.0])
+    v2 = np.array([0.0, 0, 7])
+    anchor = np.array([-4.5, 0.0, 76.5])
 
 
     # SOLVER = "solTrace"
     # folder = "C:/Users/fang/Documents/NREL_SOLAR/large_scene/"
-    # filename = folder + "raydata_from_soltrace.csv"
+    # filename = folder + "debug_raydata_from_soltrace_point_focus.csv"
     # v1 = np.array([9.0, 0.0, 0.0])
-    # v2 = np.array([0.0, 0.0, 7.0])
+    # v2 = np.array([0.0, 0, 7])
     # anchor = np.array([-4.5, 0.0, 76.5])
 
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     ax1.scatter(receiver_pts_local[:, 0], receiver_pts_local[:, 1], s=1)
     ax1.set_ylabel('Y (m)')
     ax1.set_xlabel('X (m)')
-    ax1.set_title("Receiver Hit Points in Local Coordinates")
+    ax1.set_title("Receiver Hit Points in Local Coordinates \n total # of hits: " + str(len(receiver_pts_local)))
     ax1.set_xlim([-dim_x / 2, dim_x / 2])
     ax1.set_ylim([-dim_y / 2, dim_y / 2])
     ax1.set_aspect('equal', adjustable='box')

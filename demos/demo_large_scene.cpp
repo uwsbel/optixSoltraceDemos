@@ -564,23 +564,38 @@ int main(int argc, char* argv[])
 
 {
 
+	int num_sun_points = 100000;
+
+	if (argc > 1) {
+		num_sun_points = std::stoi(argv[1]);
+	}
+
     std::string heliostat_data_file = "../data/field_30_elements.csv";
 	std::vector<GeometryData::Parallelogram> heliostats_list  = GenerateHeliostatsFromFile(heliostat_data_file);
 
     std::vector<GeometryData::Parallelogram> receiver_list;
-	GeometryData::Parallelogram receiver1(
-		make_float3(4.0f, 0.0f, 0.0f),    // v1
-		make_float3(0.0f, 0.0f, 7.0f),    // v2
-		make_float3(-4.5f, 0.0f, 76.5f)     // anchor
-	);
-	receiver_list.push_back(receiver1);
 
-    GeometryData::Parallelogram receiver2(
-        make_float3(4.0f, 0.0f, 0.0f),    // v1
-        make_float3(0.0f, 0.0f, 7.0f),    // v2
-        make_float3(0.5f, 0.0f, 76.5f)     // anchor
+ //   GeometryData::Parallelogram receiver1(
+	//	make_float3(4.0f, 0.0f, 0.0f),    // v1
+	//	make_float3(0.0f, 0.0f, 7.0f),    // v2
+	//	make_float3(-4.5f, 0.0f, 76.5f)     // anchor
+	//);
+	//receiver_list.push_back(receiver1);
+
+ //   GeometryData::Parallelogram receiver2(
+ //       make_float3(4.0f, 0.0f, 0.0f),    // v1
+ //       make_float3(0.0f, 0.0f, 7.0f),    // v2
+ //       make_float3(0.5f, 0.0f, 76.5f)     // anchor
+ //   );
+	//receiver_list.push_back(receiver2);
+
+    GeometryData::Parallelogram receiver(
+    	make_float3(9.0f, 0.0f, 0.0f),    // v1
+    	make_float3(0.0f, 0.0f, 7.0f),    // v2
+    	make_float3(-4.5f, 0.0f, 76.5f)     // anchor
     );
-	receiver_list.push_back(receiver2);
+    receiver_list.push_back(receiver);
+
 
     SoltraceState state;
 	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
@@ -595,7 +610,7 @@ int main(int argc, char* argv[])
         //state.params.sun_center = make_float3(0.0f, 0.0f, state.params.sun_radius);state.params.sun_center = make_float3(0.0f, 0.0f, state.params.sun_radius);    // z-component computed in raygen based on dims of sun
         state.params.sun_vector = make_float3(-235.034f, -5723.13f, 8196.98f);
         state.params.max_sun_angle = 0.00465;     // 4.65 mrad
-        state.params.num_sun_points = 10000;
+        state.params.num_sun_points = num_sun_points;
 
         state.params.width  = state.params.num_sun_points;
         state.params.height = 1;
@@ -647,8 +662,8 @@ int main(int argc, char* argv[])
         std::vector<float4> rd_output_buffer(state.params.width * state.params.height * state.params.max_depth);
         CUDA_CHECK(cudaMemcpy(rd_output_buffer.data(), state.params.reflected_dir_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
         */
-
-        writeVectorToCSV("debug_scene-hit_counts-10000_rays_with_buffer_ha.csv", hp_output_buffer);
+		std::string output_filename = "30_elements_" + std::to_string(num_sun_points) + "_rays.csv";
+        writeVectorToCSV(output_filename, hp_output_buffer);
 
         cleanupState(state);
     }

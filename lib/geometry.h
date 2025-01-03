@@ -7,7 +7,6 @@
 #include <string>
 #include <SoltraceState.h>
 
-int foo(int a, GeometryData::Parallelogram test);
 
 std::vector<GeometryData::Parallelogram> GenerateHeliostatsFromFile(std::string filename);
 
