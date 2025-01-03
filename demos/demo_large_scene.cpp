@@ -570,7 +570,7 @@ int main(int argc, char* argv[])
 		num_sun_points = std::stoi(argv[1]);
 	}
 
-    std::string heliostat_data_file = "../data/field_30_elements.csv";
+    std::string heliostat_data_file = "../data/field_1700_elements.csv";
 	std::vector<GeometryData::Parallelogram> heliostats_list  = GenerateHeliostatsFromFile(heliostat_data_file);
 
     std::vector<GeometryData::Parallelogram> receiver_list;
@@ -662,7 +662,7 @@ int main(int argc, char* argv[])
         std::vector<float4> rd_output_buffer(state.params.width * state.params.height * state.params.max_depth);
         CUDA_CHECK(cudaMemcpy(rd_output_buffer.data(), state.params.reflected_dir_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
         */
-		std::string output_filename = "30_elements_" + std::to_string(num_sun_points) + "_rays.csv";
+		std::string output_filename = "1700_elements_" + std::to_string(num_sun_points) + "_rays.csv";
         writeVectorToCSV(output_filename, hp_output_buffer);
 
         cleanupState(state);

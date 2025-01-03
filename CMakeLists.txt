@@ -541,6 +541,26 @@ function(copy_dll_to_bin target_name)
     endforeach()
 endfunction()
 
+
+#------------------------------------------------------------
+# Copy data directory to BUILD tree 
+# Install data directory 
+# Install sample template_project
+#------------------------------------------------------------
+
+get_property(MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(MULTI_CONFIG)
+    file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/bin/data/)
+    message(STATUS "Using a multi-config generator (${CMAKE_GENERATOR})")
+    message(STATUS "Data directory copied to: ${CMAKE_BINARY_DIR}/bin/data/")
+    message(STATUS "Binaries will be created in ${CMAKE_BINARY_DIR}/bin/<CONFIGURATION>/")
+else()
+    file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/data/)
+    message(STATUS "Using a single configuration generator (${CMAKE_GENERATOR})")
+    message(STATUS "Data directory copied to: ${CMAKE_BINARY_DIR}/data/")
+    message(STATUS "Binaries will be created in ${CMAKE_BINARY_DIR}/bin/")
+endif()
+
 #########################################################
 #  List of samples found in subdirectories.
 #
