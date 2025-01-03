@@ -309,16 +309,11 @@ void createPipeline( SoltraceState &state )
 // Ccreate and configure the Shader Binding Table (SBT).
 // The SBT is a crucial data structure in OptiX that links geometry and ray types
 // with their corresponding programs (ray generation, miss, and hit group).
-void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& helistat_list)
+void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& helistat_list, std::vector<GeometryData::Parallelogram> receiver_list)
 {
-
-    GeometryData::Parallelogram receiver(
-        make_float3(9.0f, 0.0f, 0.0f),    // v1
-        make_float3(0.0f, 0.0f, 7.0f),    // v2
-        make_float3(-4.5f, 0.0f, 76.5f)     // anchor
-    );
-    // TODO: we are assuming there's only one receiver!!
-	int obj_count = helistat_list.size() + 1;
+	int num_heliostats = helistat_list.size();
+	int num_receivers = receiver_list.size();
+    int obj_count = helistat_list.size() + receiver_list.size();
    
     // Ray generation program record
     {
@@ -399,18 +394,20 @@ void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& 
 			sbt_idx++;
 		}
          
-        // Configure Receiver SBT record, this is for the last
-	    OPTIX_CHECK( optixSbtRecordPackHeader(
-            state.radiance_receiver_prog_group,
-            &hitgroup_records_list[sbt_idx] ) );
-        hitgroup_records_list[ sbt_idx ].data.geometry_data.setParallelogram( receiver );
-        hitgroup_records_list[ sbt_idx ].data.material_data.receiver = {
-            0.95f, // Reflectivity.
-            0.0f,  // Transmissivity.
-            0.0f,  // Slope error.
-            0.0f   // Specularity error.
-        };
-        sbt_idx++;
+        for (int i = 0; i < num_receivers; i++) {
+			// Configure Receiver SBT record.
+			OPTIX_CHECK(optixSbtRecordPackHeader(
+				state.radiance_receiver_prog_group,
+				&hitgroup_records_list[sbt_idx]));
+			hitgroup_records_list[sbt_idx].data.geometry_data.setParallelogram(receiver_list[i]);
+			hitgroup_records_list[sbt_idx].data.material_data.receiver = {
+				0.95f, // Reflectivity.
+				0.0f,  // Transmissivity.
+				0.0f,  // Slope error.
+				0.0f   // Specularity error.
+			};
+			sbt_idx++;
+        }
 
         // Allocate memory for hitgroup records on the device.
         CUdeviceptr d_hitgroup_records;
@@ -570,6 +567,20 @@ int main(int argc, char* argv[])
     std::string heliostat_data_file = "../data/field_30_elements.csv";
 	std::vector<GeometryData::Parallelogram> heliostats_list  = GenerateHeliostatsFromFile(heliostat_data_file);
 
+    std::vector<GeometryData::Parallelogram> receiver_list;
+	GeometryData::Parallelogram receiver1(
+		make_float3(4.0f, 0.0f, 0.0f),    // v1
+		make_float3(0.0f, 0.0f, 7.0f),    // v2
+		make_float3(-4.5f, 0.0f, 76.5f)     // anchor
+	);
+	receiver_list.push_back(receiver1);
+
+    GeometryData::Parallelogram receiver2(
+        make_float3(4.0f, 0.0f, 0.0f),    // v1
+        make_float3(0.0f, 0.0f, 7.0f),    // v2
+        make_float3(0.5f, 0.0f, 76.5f)     // anchor
+    );
+	receiver_list.push_back(receiver2);
 
     SoltraceState state;
 	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
@@ -591,9 +602,9 @@ int main(int argc, char* argv[])
 
         // Initialize OptiX components
         createContext(state);
-        createGeometry(state, heliostats_list);
+        createGeometry(state, heliostats_list, receiver_list);
         createPipeline(state);
-        createSBT(state, heliostats_list);
+        createSBT(state, heliostats_list, receiver_list);
         initLaunchParams(state);
 
         // Copy launch parameters to device memory
@@ -637,7 +648,7 @@ int main(int argc, char* argv[])
         CUDA_CHECK(cudaMemcpy(rd_output_buffer.data(), state.params.reflected_dir_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
         */
 
-        writeVectorToCSV("debug_scene-hit_counts-10000_rays_with_buffer_haha.csv", hp_output_buffer);
+        writeVectorToCSV("debug_scene-hit_counts-10000_rays_with_buffer_ha.csv", hp_output_buffer);
 
         cleanupState(state);
     }

@@ -3,11 +3,11 @@
 # -------------------------------------------------------------------------------
 
 set(DEMOS
-    optixSoltraceDemo
+    demo_three_heliostats
     demo_large_scene
 )
 
-message(STATUS "Adding demo programs for OptiX SolTrace module...")
+message(STATUS "Adding demo programs for OptiX SolTrace ...")
 
 # Loop through demos
 foreach(PROGRAM ${DEMOS})

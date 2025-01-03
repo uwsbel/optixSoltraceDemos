@@ -8,11 +8,11 @@
 #include <sutil/Exception.h>
 
 
-const GeometryData::Parallelogram receiver(
-    make_float3(9.0f, 0.0f, 0.0f),    // v1
-    make_float3(0.0f, 0.0f, 7.0f),    // v2
-    make_float3(-4.5f, 0.0f, 76.5f)     // anchor
-);
+//const GeometryData::Parallelogram receiver(
+//    make_float3(9.0f, 0.0f, 0.0f),    // v1
+//    make_float3(0.0f, 0.0f, 7.0f),    // v2
+//    make_float3(-4.5f, 0.0f, 76.5f)     // anchor
+//);
 
 
 
@@ -283,10 +283,14 @@ inline OptixAabb parallelogram_bound(float3 v1, float3 v2, float3 anchor)
 
 // Build custom primitives (parallelograms for now, TODO generalize)
 // add variable of the list of heliostats
-void createGeometry(SoltraceState& state, std::vector<GeometryData::Parallelogram>& helistat_list)
+void createGeometry(SoltraceState& state, 
+                    std::vector<GeometryData::Parallelogram>& heliostat_list,
+                    std::vector<GeometryData::Parallelogram>& receiver_list)
 {
+	int num_heliostats = heliostat_list.size();
+	int num_receivers = receiver_list.size();
     // TODO: receiver is treated as one for now, change that
-    int obj_count = helistat_list.size() + 1;
+    int obj_count = num_heliostats + num_receivers;
     //std::vector<OptixAabb> aabb_list;
     // optixaabb vector where the size is the number of objects + 1 for the receiver
     std::vector<OptixAabb> aabb_list;
@@ -294,20 +298,20 @@ void createGeometry(SoltraceState& state, std::vector<GeometryData::Parallelogra
 
 
     //OptixAabb aabb[OBJ_COUNT];
-    for (int i = 0; i < helistat_list.size(); i++) {
+    for (int i = 0; i < num_heliostats; i++) {
 
-        aabb_list[i] = parallelogram_bound(helistat_list[i].v1, helistat_list[i].v2, helistat_list[i].anchor);
+        aabb_list[i] = parallelogram_bound(heliostat_list[i].v1, heliostat_list[i].v2, heliostat_list[i].anchor);
     }
 
-    aabb_list[obj_count - 1] = parallelogram_bound(receiver.v1, receiver.v2, receiver.anchor);
+	for (int i = 0; i < num_receivers; i++) {
+		aabb_list[num_heliostats + i] = parallelogram_bound(receiver_list[i].v1, receiver_list[i].v2, receiver_list[i].anchor);
+	}
 
     // Container to store all vertices
     std::vector<soltrace::BoundingBoxVertex> bounding_box_vertices;
 
     // Collect all vertices from AABBs
     collectAllAABBVertices(aabb_list.data(), obj_count, bounding_box_vertices);
-    std::cout << "quick check: " << aabb_list.at(2).minX << "\n";
-    std::cout << "val: " << helistat_list[2].v1.x << "\n";
 
     // Pass the vertices to computeBoundingSunBox
     computeBoundingSunBox(state, bounding_box_vertices);

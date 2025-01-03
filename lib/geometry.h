@@ -11,4 +11,4 @@ int foo(int a, GeometryData::Parallelogram test);
 
 std::vector<GeometryData::Parallelogram> GenerateHeliostatsFromFile(std::string filename);
 
-void createGeometry(SoltraceState& state, std::vector<GeometryData::Parallelogram>& helistat_list);
+void createGeometry(SoltraceState& state, std::vector<GeometryData::Parallelogram>& helistat_list, std::vector<GeometryData::Parallelogram>& receiver_list);
