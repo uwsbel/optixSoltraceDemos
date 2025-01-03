@@ -100,10 +100,10 @@ extern "C" __global__ void __raygen__sun_source()
     // Sample emission angle here - capturing sun distribution
     // const float3 ray_gen_pos = params.sun_vector + make_float3(sun_sample_pos.x, sun_sample_pos.y, 0.0f);
     const float3 ray_gen_pos = sun_sample_pos;
-    float3 initial_ray_dir = normalize(make_float3(sun_sample_pos.x, sun_sample_pos.y, 0.0f) - ray_gen_pos);
-    
+    //float3 initial_ray_dir = normalize(make_float3(sun_sample_pos.x, sun_sample_pos.y, 0.0f) - ray_gen_pos);
+    float3 ray_dir = -normalize(params.sun_vector);
     // Add some angular variation to the ray direction to simulate the sun's spread
-    float3 ray_dir = sampleRayDirection(params.max_sun_angle, ray_number);
+    //float3 ray_dir = sampleRayDirection(params.max_sun_angle, ray_number);
 
     // Create the PerRayData structure to track ray state (e.g., path index and recursion depth)
     soltrace::PerRayData prd;
