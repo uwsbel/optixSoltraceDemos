@@ -28,7 +28,6 @@
 
 typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
 
-const uint32_t OBJ_COUNT = 1693;
 const int      max_trace = 5;
 
 struct SoltraceState
@@ -59,22 +58,6 @@ struct SoltraceState
     // TODO: list of geometries - add geometries first and then iterate through list to create SBT
 };
 
-// Scene Setup
-//const GeometryData::Parallelogram heliostat1(
-//    make_float3(-1.0f, 0.0f, 0.0f),    // v1
-//    make_float3(0.0f, 1.897836f, 0.448018f),    // v2
-//    make_float3(0.5f, 4.051082f, -0.224009f)  // anchor
-//);
-//const GeometryData::Parallelogram heliostat2(
-//    make_float3(0.0f, 1.0f, 0.0f),    // v1
-//    make_float3(1.897836f, 0.0f, 0.448018f),    // v2
-//    make_float3(4.051082f, -0.5f, -0.224009f)  // anchor
-//);
-//const GeometryData::Parallelogram heliostat3(
-//    make_float3(0.0f, -1.0f, 0.0f),    // v1
-//    make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
-//    make_float3(-4.051082f, 0.5f, -0.224009f)  // anchor
-//);
 const GeometryData::Parallelogram receiver(
     make_float3(9.0f, 0.0f, 0.0f),    // v1
     make_float3(0.0f, 0.0f, 7.0f),    // v2
@@ -84,6 +67,7 @@ const GeometryData::Parallelogram receiver(
 // Compute an axis-aligned bounding box (AABB) for a parallelogram.
 //   v1, v2: Vectors defining the parallelogram's sides.
 //   anchor: The anchor point of the parallelogram.
+// TODO: check why it's v1/dot(v1,v1) if v1 and v2 define the actual edge. 
 inline OptixAabb parallelogram_bound( float3 v1, float3 v2, float3 anchor )
 {
     const float3 tv1  = v1 / dot( v1, v1 );
@@ -203,6 +187,7 @@ std::string loadPtxFromFile(const std::string& kernel_name) {
 void computeSunFrame(SoltraceState& state, float3& sun_u, float3& sun_v) {
     float3 sun_vector_hat = normalize(state.params.sun_vector);
     float3 axis = (abs(state.params.sun_vector.x) < 0.9f) ? make_float3(1.0f, 0.0f, 0.0f) : make_float3(0.0f, 1.0f, 0.0f);
+    // TODO: cross need to follow left
     sun_u = normalize(cross(axis, sun_vector_hat));
     sun_v = normalize(cross(sun_vector_hat, sun_u));
 }
@@ -323,27 +308,29 @@ void collectAllAABBVertices(const OptixAabb aabbs[], int count, std::vector<solt
 // add variable of the list of heliostats
 void createGeometry(SoltraceState& state, std::vector<GeometryData::Parallelogram>& helistat_list)
 {
-    
+    // TODO: receiver is treated as one for now, change that
+    int obj_count = helistat_list.size() + 1;
+    //std::vector<OptixAabb> aabb_list;
+	// optixaabb vector where the size is the number of objects + 1 for the receiver
+    std::vector<OptixAabb> aabb_list;
+	aabb_list.resize(obj_count);
 
-    // Define the AABBs for each object in the scene using the parallelogram bounds.
-    //OptixAabb aabb[OBJ_COUNT] = { parallelogram_bound(heliostat1.v1, heliostat1.v2, heliostat1.anchor),
-    //                                parallelogram_bound(heliostat2.v1, heliostat2.v2, heliostat2.anchor),
-    //                                parallelogram_bound(heliostat3.v1, heliostat3.v2, heliostat3.anchor),
-    //                                parallelogram_bound(receiver.v1, receiver.v2, receiver.anchor) };
     
-	OptixAabb aabb[OBJ_COUNT];
+	//OptixAabb aabb[OBJ_COUNT];
     for (int i = 0; i < helistat_list.size(); i++) {
-		aabb[i] = parallelogram_bound(helistat_list[i].v1, helistat_list[i].v2, helistat_list[i].anchor);
+        
+        aabb_list[i] = parallelogram_bound(helistat_list[i].v1, helistat_list[i].v2, helistat_list[i].anchor);
     }
 
-	aabb[OBJ_COUNT - 1] = parallelogram_bound(receiver.v1, receiver.v2, receiver.anchor);
-
+    aabb_list[obj_count - 1] = parallelogram_bound(receiver.v1, receiver.v2, receiver.anchor);
 
     // Container to store all vertices
     std::vector<soltrace::BoundingBoxVertex> bounding_box_vertices;
 
     // Collect all vertices from AABBs
-    collectAllAABBVertices(aabb, OBJ_COUNT, bounding_box_vertices);
+    collectAllAABBVertices(aabb_list.data(), obj_count, bounding_box_vertices);
+	std::cout << "quick check: " << aabb_list.at(2).minX << "\n";
+	std::cout << "val: " << helistat_list[2].v1.x << "\n";
 
     // Pass the vertices to computeBoundingSunBox
     computeBoundingSunBox(state, bounding_box_vertices);
@@ -351,56 +338,42 @@ void createGeometry(SoltraceState& state, std::vector<GeometryData::Parallelogra
     // Allocate memory on the device for the AABB array.
     CUdeviceptr d_aabb;
     CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &d_aabb
-        ), OBJ_COUNT * sizeof( OptixAabb ) ) );
+        ), obj_count * sizeof( OptixAabb ) ) );
     CUDA_CHECK( cudaMemcpy(
                 reinterpret_cast<void*>( d_aabb ),
-                &aabb,
-                OBJ_COUNT * sizeof( OptixAabb ),
+                aabb_list.data(),
+                obj_count * sizeof( OptixAabb ),
                 cudaMemcpyHostToDevice
                 ) );
 
-    // Define flags for each AABB. These flags configure how OptiX handles each geometry during traversal.
-    //uint32_t aabb_input_flags[] = {
-    //    /* flags for heliostat 1 */
-    //    OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT,
-    //    /* flags for heliostat 2 */
-    //    OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT,
-    //    /* flags for heliostat 3 */
-    //    OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT,
-    //    /* flag for receiver */
-    //    OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT,
-    //};
-
-	// initialize aabb_input_flags array 
-	uint32_t aabb_input_flags[OBJ_COUNT];
-    for (int i = 0; i < OBJ_COUNT; i++) {
+	// initialize aabb_input_flags vector
+    std::vector<uint32_t> aabb_input_flags(obj_count);
+    for (int i = 0; i < obj_count; i++) {
         aabb_input_flags[i] = OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT;
     }
 
     // Define shader binding table (SBT) indices for each geometry. TODO generalize
-    //const uint32_t sbt_index[] = { 0, 1, 2, 3};
-	uint32_t sbt_index[OBJ_COUNT];
-	for (int i = 0; i < OBJ_COUNT; i++) {
+    std::vector<uint32_t> sbt_index(obj_count);
+    for (int i = 0; i < obj_count; i++) {
 		sbt_index[i] = i;
 	}
 
+    // host to device
     CUdeviceptr    d_sbt_index;
-
-    // Allocate memory on the device for the SBT indices. Copy the SBT indices from the host to the device.
-    CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &d_sbt_index ), sizeof(sbt_index) ) );
+    CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &d_sbt_index ), obj_count * sizeof(uint32_t)));
     CUDA_CHECK( cudaMemcpy(
         reinterpret_cast<void*>( d_sbt_index ),
-        sbt_index,
-        sizeof( sbt_index ),
+        sbt_index.data(),
+        obj_count * sizeof(uint32_t),
         cudaMemcpyHostToDevice ) );
 
     // Configure the input for the GAS build process.
     OptixBuildInput aabb_input = {};
     aabb_input.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
     aabb_input.customPrimitiveArray.aabbBuffers   = &d_aabb;
-    aabb_input.customPrimitiveArray.flags         = aabb_input_flags;
-    aabb_input.customPrimitiveArray.numSbtRecords = OBJ_COUNT;
-    aabb_input.customPrimitiveArray.numPrimitives = OBJ_COUNT;
+    aabb_input.customPrimitiveArray.flags         = aabb_input_flags.data();
+    aabb_input.customPrimitiveArray.numSbtRecords = obj_count;
+    aabb_input.customPrimitiveArray.numPrimitives = obj_count;
     aabb_input.customPrimitiveArray.sbtIndexOffsetBuffer         = d_sbt_index;
     aabb_input.customPrimitiveArray.sbtIndexOffsetSizeInBytes    = sizeof( uint32_t );
     aabb_input.customPrimitiveArray.primitiveIndexOffset         = 0;
@@ -681,6 +654,8 @@ void createPipeline( SoltraceState &state )
 // with their corresponding programs (ray generation, miss, and hit group).
 void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& helistat_list)
 {
+    // TODO: we are assumping there's only one receiver!!
+	int obj_count = helistat_list.size() + 1;
    
     // Ray generation program record
     {
@@ -738,8 +713,8 @@ void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& 
     // Hitgroup program record
     {
         // Total number of hitgroup records : one per ray type per object.
-        const size_t count_records = soltrace::RAY_TYPE_COUNT * OBJ_COUNT;
-        HitGroupRecord hitgroup_records[count_records];
+        const size_t count_records = soltrace::RAY_TYPE_COUNT * obj_count;
+		std::vector<HitGroupRecord> hitgroup_records_list(count_records);
 
         // Note: Fill SBT record array the same order that acceleration structure is built.
         int sbt_idx = 0; // Index to track current record.
@@ -750,10 +725,10 @@ void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& 
 			// Configure Heliostat SBT record.
             OPTIX_CHECK(optixSbtRecordPackHeader(
 				state.radiance_mirror_prog_group,
-				&hitgroup_records[sbt_idx]));
-			hitgroup_records[sbt_idx].data.geometry_data.setParallelogram(helistat_list[i]);
-            hitgroup_records[sbt_idx].data.material_data.mirror = {
-				0.95f, // Reflectivity.
+				&hitgroup_records_list[sbt_idx]));
+			hitgroup_records_list[sbt_idx].data.geometry_data.setParallelogram(helistat_list[i]);
+            hitgroup_records_list[sbt_idx].data.material_data.mirror = {
+                0.875425f, // Reflectivity.
 				0.0f,  // Transmissivity.
 				0.0f,  // Slope error.
 				0.0f   // Specularity error.
@@ -761,51 +736,12 @@ void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& 
 			sbt_idx++;
 		}
          
-/*        // Configure Heliostat 1 SBT record.
-        OPTIX_CHECK( optixSbtRecordPackHeader(
-            state.radiance_mirror_prog_group,
-            &hitgroup_records[sbt_idx] ) );
-        hitgroup_records[ sbt_idx ].data.geometry_data.setParallelogram( heliostat1 );
-        hitgroup_records[ sbt_idx ].data.material_data.mirror = {
-            0.95f, // Reflectivity.
-            0.0f,  // Transmissivity.
-            0.0f,  // Slope error.
-            0.0f   // Specularity error.
-        };
-        sbt_idx++;
-
-        // Configure Heliostat 2 SBT record.
-        OPTIX_CHECK(optixSbtRecordPackHeader(
-            state.radiance_mirror_prog_group,
-            &hitgroup_records[sbt_idx]));
-        hitgroup_records[sbt_idx].data.geometry_data.setParallelogram(heliostat2);
-        hitgroup_records[sbt_idx].data.material_data.mirror = {
-            0.95f, // Reflectivity.
-            0.0f,  // Transmissivity.
-            0.0f,  // Slope error.
-            0.0f   // Specularity error.
-        };
-        sbt_idx++;
-
-        // Configure Heliostat 3 SBT record.
-        OPTIX_CHECK(optixSbtRecordPackHeader(
-            state.radiance_mirror_prog_group,
-            &hitgroup_records[sbt_idx]));
-        hitgroup_records[sbt_idx].data.geometry_data.setParallelogram(heliostat3);
-        hitgroup_records[sbt_idx].data.material_data.mirror = {
-            0.95f, // Reflectivity.
-            0.0f,  // Transmissivity.
-            0.0f,  // Slope error.
-            0.0f   // Specularity error.
-        };
-        sbt_idx++;
-*/
         // Configure Receiver SBT record, this is for the last
 	    OPTIX_CHECK( optixSbtRecordPackHeader(
             state.radiance_receiver_prog_group,
-            &hitgroup_records[sbt_idx] ) );
-        hitgroup_records[ sbt_idx ].data.geometry_data.setParallelogram( receiver );
-        hitgroup_records[ sbt_idx ].data.material_data.receiver = {
+            &hitgroup_records_list[sbt_idx] ) );
+        hitgroup_records_list[ sbt_idx ].data.geometry_data.setParallelogram( receiver );
+        hitgroup_records_list[ sbt_idx ].data.material_data.receiver = {
             0.95f, // Reflectivity.
             0.0f,  // Transmissivity.
             0.0f,  // Slope error.
@@ -824,7 +760,7 @@ void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& 
         // Copy hitgroup records from host to device.
         CUDA_CHECK( cudaMemcpy(
             reinterpret_cast<void*>( d_hitgroup_records ),
-            hitgroup_records,
+            hitgroup_records_list.data(),
             sizeof_hitgroup_record*count_records,
             cudaMemcpyHostToDevice
         ) );
@@ -969,7 +905,7 @@ int main(int argc, char* argv[])
 {
 
     // command line input, read csv file to extract heliostat data
-    std::string heliostat_data_file = "C:/Users/fang/Documents/NREL_SOLAR/large_scene/small-system_rotated.csv";
+    std::string heliostat_data_file = "C:/Users/fang/Documents/NREL_SOLAR/large_scene/debug-system_rotated.csv";
 
 	// skip first line, first go through to determine the number of lines (number of heliostats)
 	std::ifstream file(heliostat_data_file);
@@ -1024,7 +960,7 @@ int main(int argc, char* argv[])
         //state.params.sun_center = make_float3(0.0f, 0.0f, state.params.sun_radius);state.params.sun_center = make_float3(0.0f, 0.0f, state.params.sun_radius);    // z-component computed in raygen based on dims of sun
         state.params.sun_vector = make_float3(-235.034f, -5723.13f, 8196.98f);
         state.params.max_sun_angle = 0.00465;     // 4.65 mrad
-        state.params.num_sun_points = 1000000;
+        state.params.num_sun_points = 10000;
 
         state.params.width  = state.params.num_sun_points;
         state.params.height = 1;
@@ -1077,7 +1013,7 @@ int main(int argc, char* argv[])
         CUDA_CHECK(cudaMemcpy(rd_output_buffer.data(), state.params.reflected_dir_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
         */
 
-        writeVectorToCSV("demo_large_scene-hit_counts-1000000_rays_with_buffer.csv", hp_output_buffer);
+        writeVectorToCSV("debug_scene-hit_counts-10000_rays_with_buffer.csv", hp_output_buffer);
 
         cleanupState(state);
     }
