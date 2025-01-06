@@ -379,7 +379,7 @@ void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& 
 
         // TODO: Material params - arbitrary right now
 
-		for (int i = 0; i < helistat_list.size(); i++) {
+		for (int i = 0; i < num_heliostats; i++) {
 			// Configure Heliostat SBT record.
             OPTIX_CHECK(optixSbtRecordPackHeader(
 				state.radiance_mirror_prog_group,
@@ -563,14 +563,15 @@ void writeVectorToCSV(const std::string& filename, const std::vector<float4>& da
 int main(int argc, char* argv[])
 
 {
-
-	int num_sun_points = 100000;
+    int num_elements = 1700;
+	int num_sun_points = 1000000;
 
 	if (argc > 1) {
-		num_sun_points = std::stoi(argv[1]);
+        num_elements = std::stoi(argv[1]);
+        num_sun_points = std::stoi(argv[2]);
 	}
 
-    std::string heliostat_data_file = "../data/field_1700_elements.csv";
+    std::string heliostat_data_file = "../data/field_" + std::to_string(num_elements) + "_elements.csv";
 	std::vector<GeometryData::Parallelogram> heliostats_list  = GenerateHeliostatsFromFile(heliostat_data_file);
 
     std::vector<GeometryData::Parallelogram> receiver_list;
@@ -601,8 +602,10 @@ int main(int argc, char* argv[])
 	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
 	std::cout << "samples ptx dir: " << SAMPLES_PTX_DIR << std::endl;
 
+    /*
     // Start the timer
     auto start = std::chrono::high_resolution_clock::now();
+    */
 
     try
     {
@@ -627,7 +630,7 @@ int main(int argc, char* argv[])
             sizeof(soltrace::LaunchParams), cudaMemcpyHostToDevice, state.stream));
 
         // Start the timer
-        auto start_buff = std::chrono::high_resolution_clock::now();
+        auto start = std::chrono::high_resolution_clock::now();
 
         // Launch the OptiX pipeline
         OPTIX_CHECK( optixLaunch(
@@ -644,14 +647,16 @@ int main(int argc, char* argv[])
         CUDA_SYNC_CHECK();
 
         // Stop the timer
-        auto end_buff = std::chrono::high_resolution_clock::now();
-        auto duration_ms_buff = std::chrono::duration_cast<std::chrono::milliseconds>(end_buff - start_buff);
-        std::cout << "Execution time ray launch: " << duration_ms_buff.count() << " milliseconds" << std::endl;
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout << "Execution time ray launch: " << duration_ms.count() << " milliseconds" << std::endl;
 
+        /*
         // Stop the timer
         auto end = std::chrono::high_resolution_clock::now();
         auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         std::cout << "Execution time full sim: " << duration_ms.count() << " milliseconds" << std::endl;
+        */
 
         // Copy hit point results from device memory
         std::vector<float4> hp_output_buffer(state.params.width * state.params.height * state.params.max_depth);
@@ -662,7 +667,7 @@ int main(int argc, char* argv[])
         std::vector<float4> rd_output_buffer(state.params.width * state.params.height * state.params.max_depth);
         CUDA_CHECK(cudaMemcpy(rd_output_buffer.data(), state.params.reflected_dir_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
         */
-		std::string output_filename = "1700_elements_" + std::to_string(num_sun_points) + "_rays.csv";
+		std::string output_filename = std::to_string(num_elements) + "_elements_" + std::to_string(num_sun_points) + "_rays.csv";
         writeVectorToCSV(output_filename, hp_output_buffer);
 
         cleanupState(state);
