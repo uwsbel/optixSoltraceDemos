@@ -111,7 +111,7 @@ extern "C" __global__ void __raygen__sun_source()
     prd.depth = 0;
 
     
-    params.hit_point_buffer[params.max_depth * prd.ray_path_index] = make_float4(0.0f, ray_gen_pos);
+    //params.hit_point_buffer[params.max_depth * prd.ray_path_index] = make_float4(0.0f, ray_gen_pos);
     
 
     // Cast and trace the ray through the scene
