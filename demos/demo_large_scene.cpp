@@ -7,7 +7,6 @@
 #include <cuda_runtime.h>
 #include <sampleConfig.h>
 #include <optix.h>
-#include <internal/optix_device_impl.h>
 #include <optix_function_table_definition.h>
 #include <optix_stack_size.h>
 #include <optix_stubs.h>
