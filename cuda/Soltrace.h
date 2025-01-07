@@ -19,6 +19,18 @@ struct HitGroupData
     MaterialData material_data;
 };
 
+struct BoundingBoxVertex
+{
+    float       distance;
+    float3      point;
+};
+
+struct ProjectedPoint
+{
+    float       buffer;
+    float2      point;
+};
+
 enum RayType
 {
     RAY_TYPE_RADIANCE = 0,
@@ -35,12 +47,19 @@ struct LaunchParams
     float4*                     reflected_dir_buffer;
     OptixTraversableHandle      handle;
 
-    float3                      sun_center;
+    float3                      sun_vector;
+    float                       sun_height;
     float                       sun_radius;
     float                       max_sun_angle;
     int                         num_sun_points;
     float3                      scene_position;
-    OptixAabb                   scene_aabb;
+    //float3                      scene_max;
+    //float3                      scene_min;
+    //float3*                     sun_bounds_global_frame;
+    float3                      sun_v0;
+    float3                      sun_v1;
+    float3                      sun_v2;
+    float3                      sun_v3;
 };
 
 struct PerRayData

@@ -1,6 +1,7 @@
 // TODO: 
 // refactor, so things like loading shaders and creating modules are in separate cpp files
-
+// obj count is hardcoded, make it dynamic
+// aabb_input_flags should be the size of the object count
 
 
 #include <cuda_runtime.h>
@@ -14,6 +15,7 @@
 #include <sutil/Record.h>
 #include <sutil/sutil.h>
 #include <sutil/vec_math.h>
+#include <chrono>
 
 #include <iomanip>
 #include <cstring>
@@ -24,156 +26,11 @@
 
 
 #include <cuda/Soltrace.h>
+#include <lib/geometry.h>
 
 typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
 
-const uint32_t OBJ_COUNT = 4;
 const int      max_trace = 5;
-
-struct SoltraceState
-{
-    OptixDeviceContext          context                         = 0;
-    OptixTraversableHandle      gas_handle                      = {};
-    CUdeviceptr                 d_gas_output_buffer             = {};
-
-    OptixModule                 geometry_module                 = 0;
-    OptixModule                 shading_module                  = 0;
-    OptixModule                 sun_module                      = 0;
-
-    OptixProgramGroup           raygen_prog_group               = 0;
-    OptixProgramGroup           radiance_miss_prog_group        = 0;
-    OptixProgramGroup           radiance_mirror_prog_group      = 0;
-    OptixProgramGroup           radiance_receiver_prog_group    = 0;
-
-    OptixPipeline               pipeline                        = 0;
-    OptixPipelineCompileOptions pipeline_compile_options        = {};
-
-    CUstream                    stream                          = 0;
-    
-    soltrace::LaunchParams      params;
-    soltrace::LaunchParams*     d_params                        = nullptr;
-
-    OptixShaderBindingTable     sbt                             = {};
-
-    // TODO: list of geometries - add geometries first and then iterate through list to create SBT
-};
-
-// Scene Setup
-const GeometryData::Parallelogram heliostat1(
-    make_float3(-1.0f, 0.0f, 0.0f),    // v1
-    make_float3(0.0f, 1.897836f, 0.448018f),    // v2
-    make_float3(0.5f, 4.051082f, -0.224009f)  // anchor
-);
-const GeometryData::Parallelogram heliostat2(
-    make_float3(0.0f, 1.0f, 0.0f),    // v1
-    make_float3(1.897836f, 0.0f, 0.448018f),    // v2
-    make_float3(4.051082f, -0.5f, -0.224009f)  // anchor
-);
-const GeometryData::Parallelogram heliostat3(
-    make_float3(0.0f, -1.0f, 0.0f),    // v1
-    make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
-    make_float3(-4.051082f, 0.5f, -0.224009f)  // anchor
-);
-const GeometryData::Parallelogram receiver(
-    make_float3(2.0f, 0.0f, 0.0f),    // v1
-    make_float3(0.0f, 1.788854f, 0.894428f),    // v2
-    make_float3(-1.0f, -0.894427f, 9.552786f)     // anchor
-);
-
-// Compute an axis-aligned bounding box (AABB) for a parallelogram.
-//   v1, v2: Vectors defining the parallelogram's sides.
-//   anchor: The anchor point of the parallelogram.
-inline OptixAabb parallelogram_bound( float3 v1, float3 v2, float3 anchor )
-{
-    const float3 tv1  = v1 / dot( v1, v1 );
-    const float3 tv2  = v2 / dot( v2, v2 );
-    // Compute the four corners of the parallelogram in 3D space.
-    const float3 p00  = anchor;                 // Lower-left corner
-    const float3 p01  = anchor + tv1;           // Lower-right corner
-    const float3 p10  = anchor + tv2;           // Upper-left corner
-    const float3 p11  = anchor + tv1 + tv2;     // Upper-right corner
-
-    float3 m_min = fminf( fminf( p00, p01 ), fminf( p10, p11 ));
-    float3 m_max = fmaxf( fmaxf( p00, p01 ), fmaxf( p10, p11 ));
-    return {
-        m_min.x, m_min.y, m_min.z,
-        m_max.x, m_max.y, m_max.z
-    };
-}
-
-// Build a GAS (Geometry Acceleration Structure) for the scene.
-static void buildGas(
-    const SoltraceState &state,
-    const OptixAccelBuildOptions &accel_options,
-    const OptixBuildInput &build_input,
-    OptixTraversableHandle &gas_handle,
-    CUdeviceptr &d_gas_output_buffer
-    ) {
-
-    OptixAccelBufferSizes gas_buffer_sizes;     // Holds required sizes for temp and output buffers.
-    CUdeviceptr d_temp_buffer_gas;              // Temporary buffer for building the GAS.
-
-    // Query the memory usage required for building the GAS.
-    OPTIX_CHECK( optixAccelComputeMemoryUsage(
-        state.context,
-        &accel_options,
-        &build_input,
-        1,
-        &gas_buffer_sizes));
-
-    // Allocate memory for the temporary buffer on the device.
-    CUDA_CHECK( cudaMalloc(
-        reinterpret_cast<void**>( &d_temp_buffer_gas ),
-        gas_buffer_sizes.tempSizeInBytes));
-
-    // Non-compacted output and size of compacted GAS
-    CUdeviceptr d_buffer_temp_output_gas_and_compacted_size;
-    size_t compactedSizeOffset = roundUp<size_t>( gas_buffer_sizes.outputSizeInBytes, 8ull );
-    CUDA_CHECK( cudaMalloc(
-                reinterpret_cast<void**>( &d_buffer_temp_output_gas_and_compacted_size ),
-                compactedSizeOffset + 8
-                ) );
-
-    // Emit property to store the compacted GAS size.
-    OptixAccelEmitDesc emitProperty = {};
-    emitProperty.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
-    emitProperty.result = (CUdeviceptr)((char*)d_buffer_temp_output_gas_and_compacted_size + compactedSizeOffset);
-
-    // Build the GAS.
-    OPTIX_CHECK( optixAccelBuild(
-        state.context,                                  // OptiX context
-        0,                                              // CUDA stream (default is 0)
-        &accel_options,                                 // Acceleration build options
-        &build_input,                                   // Build inputs
-        1,                                              // Number of build inputs
-        d_temp_buffer_gas,                              // Temporary buffer
-        gas_buffer_sizes.tempSizeInBytes,               // Size of temporary buffer
-        d_buffer_temp_output_gas_and_compacted_size,    // Output buffer
-        gas_buffer_sizes.outputSizeInBytes,             // Size of output buffer
-        &gas_handle,                                    // Output handle
-        &emitProperty,                                  // Emitted properties
-        1) );                                           // Number of emitted properties
-        
-    CUDA_CHECK( cudaFree( (void*)d_temp_buffer_gas ) );
-
-    size_t compacted_gas_size;
-    CUDA_CHECK( cudaMemcpy( &compacted_gas_size, (void*)emitProperty.result, sizeof(size_t), cudaMemcpyDeviceToHost ) );
-
-    // If the compacted GAS size is smaller, allocate a smaller buffer and compact the GAS
-    if( compacted_gas_size < gas_buffer_sizes.outputSizeInBytes )
-    {
-        CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &d_gas_output_buffer ), compacted_gas_size ) );
-
-        // use handle as input and output
-        OPTIX_CHECK( optixAccelCompact( state.context, 0, gas_handle, d_gas_output_buffer, compacted_gas_size, &gas_handle ) );
-
-        CUDA_CHECK( cudaFree( (void*)d_buffer_temp_output_gas_and_compacted_size ) );
-    }
-    else
-    {
-        d_gas_output_buffer = d_buffer_temp_output_gas_and_compacted_size;
-    }
-}
 
 // Print a float3 structure
 void printFloat3(const char* label, const float3& vec) {
@@ -184,7 +41,7 @@ void printFloat3(const char* label, const float3& vec) {
 // Load ptx given shader strings 
 std::string loadPtxFromFile(const std::string& kernel_name) {
     // Construct the full PTX file path based on the kernel name
-    const std::string ptx_file = std::string(SAMPLES_PTX_DIR) + "optixSoltraceDemo_generated_" + kernel_name + ".cu.ptx";
+    const std::string ptx_file = std::string(SAMPLES_PTX_DIR) + "demo_large_scene_generated_" + kernel_name + ".cu.ptx";
 
     std::cout << "PTX file name: " << ptx_file << "\n";
     // Read the PTX file into a string
@@ -198,107 +55,6 @@ std::string loadPtxFromFile(const std::string& kernel_name) {
     return source_buffer.str(); // Return the PTX content
 }
 
-
-
-// Build custom primitives (parallelograms for now, TODO generalize)
-void createGeometry(SoltraceState& state)
-{
-    // Define the AABBs for each object in the scene using the parallelogram bounds.
-    OptixAabb aabb[OBJ_COUNT] = { parallelogram_bound(heliostat1.v1, heliostat1.v2, heliostat1.anchor),
-                                    parallelogram_bound(heliostat2.v1, heliostat2.v2, heliostat2.anchor),
-                                    parallelogram_bound(heliostat3.v1, heliostat3.v2, heliostat3.anchor),
-                                    parallelogram_bound(receiver.v1, receiver.v2, receiver.anchor) };
-
-    // Initialize the overall min and max using the first object's AABB
-    float3 overallMin = { aabb[0].minX, aabb[0].minY, aabb[0].minZ };
-    float3 overallMax = { aabb[0].maxX, aabb[0].maxY, aabb[0].maxZ };
-
-    // Loop through the remaining AABBs to find the overall scene bounds
-    for (int i = 1; i < OBJ_COUNT; ++i) {
-        float3 currentMin = { aabb[i].minX, aabb[i].minY, aabb[i].minZ };
-        float3 currentMax = { aabb[i].maxX, aabb[i].maxY, aabb[i].maxZ };
-
-        // Update the overall min and max
-        overallMin = fminf(overallMin, currentMin);
-        overallMax = fmaxf(overallMax, currentMax);
-    }
-
-    // DEBUG: Print the results
-    /*
-    printFloat3("Overall Min", overallMin);
-    printFloat3("Overall Max", overallMax);
-    */
-
-    // Allocate a result array to return the overall min and max
-    state.params.scene_aabb = {
-        overallMin.x, overallMin.y, overallMin.z,
-        overallMax.x, overallMax.y, overallMax.z
-    };
-
-    // Allocate memory on the device for the AABB array.
-    CUdeviceptr d_aabb;
-    CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &d_aabb
-        ), OBJ_COUNT * sizeof( OptixAabb ) ) );
-    CUDA_CHECK( cudaMemcpy(
-                reinterpret_cast<void*>( d_aabb ),
-                &aabb,
-                OBJ_COUNT * sizeof( OptixAabb ),
-                cudaMemcpyHostToDevice
-                ) );
-
-    // Define flags for each AABB. These flags configure how OptiX handles each geometry during traversal.
-    uint32_t aabb_input_flags[] = {
-        /* flags for heliostat 1 */
-        OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT,
-        /* flags for heliostat 2 */
-        OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT,
-        /* flags for heliostat 3 */
-        OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT,
-        /* flag for receiver */
-        OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT,
-    };
-
-    // Define shader binding table (SBT) indices for each geometry. TODO generalize
-    const uint32_t sbt_index[] = { 0, 1, 2, 3};
-    CUdeviceptr    d_sbt_index;
-
-    // Allocate memory on the device for the SBT indices. Copy the SBT indices from the host to the device.
-    CUDA_CHECK( cudaMalloc( reinterpret_cast<void**>( &d_sbt_index ), sizeof(sbt_index) ) );
-    CUDA_CHECK( cudaMemcpy(
-        reinterpret_cast<void*>( d_sbt_index ),
-        sbt_index,
-        sizeof( sbt_index ),
-        cudaMemcpyHostToDevice ) );
-
-    // Configure the input for the GAS build process.
-    OptixBuildInput aabb_input = {};
-    aabb_input.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
-    aabb_input.customPrimitiveArray.aabbBuffers   = &d_aabb;
-    aabb_input.customPrimitiveArray.flags         = aabb_input_flags;
-    aabb_input.customPrimitiveArray.numSbtRecords = OBJ_COUNT;
-    aabb_input.customPrimitiveArray.numPrimitives = OBJ_COUNT;
-    aabb_input.customPrimitiveArray.sbtIndexOffsetBuffer         = d_sbt_index;
-    aabb_input.customPrimitiveArray.sbtIndexOffsetSizeInBytes    = sizeof( uint32_t );
-    aabb_input.customPrimitiveArray.primitiveIndexOffset         = 0;
-
-    // Set up acceleration structure (AS) build options.
-    OptixAccelBuildOptions accel_options = {
-        OPTIX_BUILD_FLAG_ALLOW_COMPACTION,  // buildFlags. Enable compaction to reduce memory usage.
-        OPTIX_BUILD_OPERATION_BUILD         // operation. Build a new acceleration structure (not an update).
-    };
-
-    // Build the GAS using the defined AABBs and options.
-    buildGas(
-        state,             // Application state with OptiX context.
-        accel_options,     // Build options.
-        aabb_input,        // AABB input description.
-        state.gas_handle,  // Output: traversable handle for the GAS.
-        state.d_gas_output_buffer // Output: device buffer for the GAS.
-    );
-
-    CUDA_CHECK( cudaFree( (void*)d_aabb) );
-    CUDA_CHECK( cudaFree( reinterpret_cast<void*>(d_sbt_index) ) );
-}
 
 // Create OptiX modules for different components of the application.
 // Modules correspond to different functionality, such as geometry handling, materials, and the sun.
@@ -555,8 +311,12 @@ void createPipeline( SoltraceState &state )
 // Ccreate and configure the Shader Binding Table (SBT).
 // The SBT is a crucial data structure in OptiX that links geometry and ray types
 // with their corresponding programs (ray generation, miss, and hit group).
-void createSBT( SoltraceState &state )
+void createSBT( SoltraceState &state, std::vector<GeometryData::Parallelogram>& helistat_list, std::vector<GeometryData::Parallelogram> receiver_list)
 {
+	int num_heliostats = helistat_list.size();
+	int num_receivers = receiver_list.size();
+    int obj_count = helistat_list.size() + receiver_list.size();
+   
     // Ray generation program record
     {
         CUdeviceptr d_raygen_record;                   // Device pointer to hold the raygen SBT record.
@@ -613,65 +373,43 @@ void createSBT( SoltraceState &state )
     // Hitgroup program record
     {
         // Total number of hitgroup records : one per ray type per object.
-        const size_t count_records = soltrace::RAY_TYPE_COUNT * OBJ_COUNT;
-        HitGroupRecord hitgroup_records[count_records];
+        const size_t count_records = soltrace::RAY_TYPE_COUNT * obj_count;
+		std::vector<HitGroupRecord> hitgroup_records_list(count_records);
 
         // Note: Fill SBT record array the same order that acceleration structure is built.
         int sbt_idx = 0; // Index to track current record.
 
         // TODO: Material params - arbitrary right now
+
+		for (int i = 0; i < num_heliostats; i++) {
+			// Configure Heliostat SBT record.
+            OPTIX_CHECK(optixSbtRecordPackHeader(
+				state.radiance_mirror_prog_group,
+				&hitgroup_records_list[sbt_idx]));
+			hitgroup_records_list[sbt_idx].data.geometry_data.setParallelogram(helistat_list[i]);
+            hitgroup_records_list[sbt_idx].data.material_data.mirror = {
+                0.875425f, // Reflectivity.
+				0.0f,  // Transmissivity.
+				0.0f,  // Slope error.
+				0.0f   // Specularity error.
+			};
+			sbt_idx++;
+		}
          
-        // Configure Heliostat 1 SBT record.
-        OPTIX_CHECK( optixSbtRecordPackHeader(
-            state.radiance_mirror_prog_group,
-            &hitgroup_records[sbt_idx] ) );
-        hitgroup_records[ sbt_idx ].data.geometry_data.setParallelogram( heliostat1 );
-        hitgroup_records[ sbt_idx ].data.material_data.mirror = {
-            0.95f, // Reflectivity.
-            0.0f,  // Transmissivity.
-            0.0f,  // Slope error.
-            0.0f   // Specularity error.
-        };
-        sbt_idx++;
-
-        // Configure Heliostat 2 SBT record.
-        OPTIX_CHECK(optixSbtRecordPackHeader(
-            state.radiance_mirror_prog_group,
-            &hitgroup_records[sbt_idx]));
-        hitgroup_records[sbt_idx].data.geometry_data.setParallelogram(heliostat2);
-        hitgroup_records[sbt_idx].data.material_data.mirror = {
-            0.95f, // Reflectivity.
-            0.0f,  // Transmissivity.
-            0.0f,  // Slope error.
-            0.0f   // Specularity error.
-        };
-        sbt_idx++;
-
-        // Configure Heliostat 3 SBT record.
-        OPTIX_CHECK(optixSbtRecordPackHeader(
-            state.radiance_mirror_prog_group,
-            &hitgroup_records[sbt_idx]));
-        hitgroup_records[sbt_idx].data.geometry_data.setParallelogram(heliostat3);
-        hitgroup_records[sbt_idx].data.material_data.mirror = {
-            0.95f, // Reflectivity.
-            0.0f,  // Transmissivity.
-            0.0f,  // Slope error.
-            0.0f   // Specularity error.
-        };
-        sbt_idx++;
-
-        // Configure Receiver SBT record.
-        OPTIX_CHECK( optixSbtRecordPackHeader(
-            state.radiance_receiver_prog_group,
-            &hitgroup_records[sbt_idx] ) );
-        hitgroup_records[ sbt_idx ].data.geometry_data.setParallelogram( receiver );
-        hitgroup_records[ sbt_idx ].data.material_data.receiver = {
-            0.95f, // Reflectivity.
-            0.0f,  // Transmissivity.
-            0.0f,  // Slope error.
-            0.0f   // Specularity error.
-        };
-        sbt_idx++;
+        for (int i = 0; i < num_receivers; i++) {
+			// Configure Receiver SBT record.
+			OPTIX_CHECK(optixSbtRecordPackHeader(
+				state.radiance_receiver_prog_group,
+				&hitgroup_records_list[sbt_idx]));
+			hitgroup_records_list[sbt_idx].data.geometry_data.setParallelogram(receiver_list[i]);
+			hitgroup_records_list[sbt_idx].data.material_data.receiver = {
+				0.95f, // Reflectivity.
+				0.0f,  // Transmissivity.
+				0.0f,  // Slope error.
+				0.0f   // Specularity error.
+			};
+			sbt_idx++;
+        }
 
         // Allocate memory for hitgroup records on the device.
         CUdeviceptr d_hitgroup_records;
@@ -684,7 +422,7 @@ void createSBT( SoltraceState &state )
         // Copy hitgroup records from host to device.
         CUDA_CHECK( cudaMemcpy(
             reinterpret_cast<void*>( d_hitgroup_records ),
-            hitgroup_records,
+            hitgroup_records_list.data(),
             sizeof_hitgroup_record*count_records,
             cudaMemcpyHostToDevice
         ) );
@@ -736,6 +474,8 @@ void initLaunchParams( SoltraceState& state )
 
     // Allocate memory for the hit point buffer.
     // The size depends on the sun (ray generation resolution) parameters and the maximum ray depth.
+    // Start the timer
+    auto start_buff = std::chrono::high_resolution_clock::now();
     const size_t hit_point_buffer_size = state.params.width * state.params.height * sizeof(float4) * state.params.max_depth;
     
     CUDA_CHECK(cudaMalloc(
@@ -823,31 +563,76 @@ void writeVectorToCSV(const std::string& filename, const std::vector<float4>& da
 }
 
 int main(int argc, char* argv[])
+
 {
+    int num_elements = 1700;
+	int num_sun_points = 1000000;
+
+	if (argc > 1) {
+        num_elements = std::stoi(argv[1]);
+        num_sun_points = std::stoi(argv[2]);
+	}
+
+    std::string heliostat_data_file = "../data/field_" + std::to_string(num_elements) + "_elements.csv";
+	std::vector<GeometryData::Parallelogram> heliostats_list  = GenerateHeliostatsFromFile(heliostat_data_file);
+
+    std::vector<GeometryData::Parallelogram> receiver_list;
+
+ //   GeometryData::Parallelogram receiver1(
+	//	make_float3(4.0f, 0.0f, 0.0f),    // v1
+	//	make_float3(0.0f, 0.0f, 7.0f),    // v2
+	//	make_float3(-4.5f, 0.0f, 76.5f)     // anchor
+	//);
+	//receiver_list.push_back(receiver1);
+
+ //   GeometryData::Parallelogram receiver2(
+ //       make_float3(4.0f, 0.0f, 0.0f),    // v1
+ //       make_float3(0.0f, 0.0f, 7.0f),    // v2
+ //       make_float3(0.5f, 0.0f, 76.5f)     // anchor
+ //   );
+	//receiver_list.push_back(receiver2);
+
+    GeometryData::Parallelogram receiver(
+    	make_float3(9.0f, 0.0f, 0.0f),    // v1
+    	make_float3(0.0f, 0.0f, 7.0f),    // v2
+    	make_float3(-4.5f, 0.0f, 76.5f)     // anchor
+    );
+    receiver_list.push_back(receiver);
+
+
     SoltraceState state;
 	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
 	std::cout << "samples ptx dir: " << SAMPLES_PTX_DIR << std::endl;
 
+    /*
+    // Start the timer
+    auto start = std::chrono::high_resolution_clock::now();
+    */
+
     try
     {
         // Initialize simulation parameters
-        state.params.sun_center = make_float3(0.0f, 0.0f, 20.0f);
+        //state.params.sun_center = make_float3(0.0f, 0.0f, state.params.sun_radius);state.params.sun_center = make_float3(0.0f, 0.0f, state.params.sun_radius);    // z-component computed in raygen based on dims of sun
+        state.params.sun_vector = make_float3(-235.034f, -5723.13f, 8196.98f);
         state.params.max_sun_angle = 0.00465;     // 4.65 mrad
-        state.params.num_sun_points = 1000000;
+        state.params.num_sun_points = num_sun_points;
 
         state.params.width  = state.params.num_sun_points;
         state.params.height = 1;
 
         // Initialize OptiX components
         createContext(state);
-        createGeometry(state);
+        createGeometry(state, heliostats_list, receiver_list);
         createPipeline(state);
-        createSBT(state);
+        createSBT(state, heliostats_list, receiver_list);
         initLaunchParams(state);
 
         // Copy launch parameters to device memory
         CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void*>(state.d_params), &state.params,
             sizeof(soltrace::LaunchParams), cudaMemcpyHostToDevice, state.stream));
+
+        // Start the timer
+        auto start = std::chrono::high_resolution_clock::now();
 
         // Launch the OptiX pipeline
         OPTIX_CHECK( optixLaunch(
@@ -863,6 +648,18 @@ int main(int argc, char* argv[])
 
         CUDA_SYNC_CHECK();
 
+        // Stop the timer
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout << "Execution time ray launch: " << duration_ms.count() << " milliseconds" << std::endl;
+
+        /*
+        // Stop the timer
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout << "Execution time full sim: " << duration_ms.count() << " milliseconds" << std::endl;
+        */
+
         // Copy hit point results from device memory
         std::vector<float4> hp_output_buffer(state.params.width * state.params.height * state.params.max_depth);
         CUDA_CHECK(cudaMemcpy(hp_output_buffer.data(), state.params.hit_point_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
@@ -872,8 +669,8 @@ int main(int argc, char* argv[])
         std::vector<float4> rd_output_buffer(state.params.width * state.params.height * state.params.max_depth);
         CUDA_CHECK(cudaMemcpy(rd_output_buffer.data(), state.params.reflected_dir_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
         */
-
-        writeVectorToCSV("test_output_new_sun_model_v13.csv", hp_output_buffer);
+		std::string output_filename = std::to_string(num_elements) + "_elements_" + std::to_string(num_sun_points) + "_rays.csv";
+        writeVectorToCSV(output_filename, hp_output_buffer);
 
         cleanupState(state);
     }

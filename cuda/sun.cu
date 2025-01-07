@@ -25,21 +25,21 @@ __device__ float halton(int index, int base) {
 
 // Generate a sample point within a parallelogram defined by the AABB (Axis-Aligned Bounding Box)
 // Uses the Halton sequence for sampling
-__device__ float2 haltonSampleInParallelogram(OptixAabb aabb, int sample_index) {
+__device__ float3 haltonSampleInParallelogram(int sample_index) {
     // Generate Halton sequence values
     float u = halton(sample_index, 2); // Base 2 for x
     float v = halton(sample_index, 3); // Base 3 for y
 
-    // Map the Halton values to the parallelogram
-    float sampled_x = aabb.minX + u * (aabb.maxX - aabb.minX);
-    float sampled_y = aabb.minY + v * (aabb.maxY - aabb.minY);
+    // Compute the two edge vectors of the parallelogram
+    float3 edge1 = params.sun_v1 - params.sun_v0; // First edge vector
+    float3 edge2 = params.sun_v3 - params.sun_v0; // Second edge vector
 
-    return make_float2(sampled_x, sampled_y);
+    return params.sun_v0 + u * edge1 + v * edge2;
 }
 
 // Generate a random sample point within a parallelogram using a random number generator (RNG)
 // The parallelogram is defined by an AABB (Axis-Aligned Bounding Box)
-__device__ float2 samplePointInParallelogram(OptixAabb aabb, unsigned int seed) {
+__device__ float2 samplePointInParallelogram(float3 scene_min, float3 scene_max, unsigned int seed) {
     curandState rng_state;
     curand_init(seed, 0, 0, &rng_state);
 
@@ -47,9 +47,10 @@ __device__ float2 samplePointInParallelogram(OptixAabb aabb, unsigned int seed) 
     float u = curand_uniform(&rng_state);
     float v = curand_uniform(&rng_state);
 
+    // TODO: This is obsolete now with updates bounds computation - UPDATE
     // Interpolate between the bounds of the parallelogram
-    float x = aabb.minX + u * (aabb.maxX - aabb.minX);
-    float y = aabb.minY + v * (aabb.maxY - aabb.minY);
+    float x = scene_min.x + u * (scene_max.x - scene_min.x);
+    float y = scene_min.y + v * (scene_max.y - scene_min.y);
 
     // Return the sampled point
     return make_float2(x, y);
@@ -75,8 +76,8 @@ __device__ float3 sampleRayDirection(float max_angle, unsigned int seed) {
     curand_init(seed, 0, 0, &rng_state);
 
     // Sample a random angle within the cone's angular spread
-    float angle = max_angle * curand_normal(&rng_state);   // Random angle within max angular spread
-    float phi = 2.0f * M_PIf * curand_normal(&rng_state);  // Random azimuthal angle
+    float angle = max_angle * curand_uniform(&rng_state);   // Random angle within max angular spread
+    float phi = 2.0f * M_PIf * curand_uniform(&rng_state);  // Random azimuthal angle
 
     // Convert spherical coordinaes to Cartesian for ray direction
     float x = sinf(angle) * cosf(phi);
@@ -94,24 +95,24 @@ extern "C" __global__ void __raygen__sun_source()
     const uint3 launch_dims = optixGetLaunchDimensions();   // Dimensions of the launch grid
     const unsigned int ray_number = launch_idx.y * launch_dims.x + launch_idx.x;  // Unique ray ID
 
-    // TODO: add a buffer around smallest AABB
-    float2 sun_sample_pos = haltonSampleInParallelogram(params.scene_aabb, ray_number);
+    float3 sun_sample_pos = haltonSampleInParallelogram(ray_number);
 
     // Sample emission angle here - capturing sun distribution
-    // TODO: this is assuming the sun is directly above the scene (sun vector (0, 0, height)) to avoid projections for now
-    const float3 ray_gen_pos = params.sun_center + make_float3(sun_sample_pos.x, sun_sample_pos.y, 0.0f);
-    float3 initial_ray_dir = normalize(make_float3(sun_sample_pos.x, sun_sample_pos.y, 0.0f) - ray_gen_pos);
+    // const float3 ray_gen_pos = params.sun_vector + make_float3(sun_sample_pos.x, sun_sample_pos.y, 0.0f);
+    const float3 ray_gen_pos = sun_sample_pos;
+    //float3 initial_ray_dir = normalize(make_float3(sun_sample_pos.x, sun_sample_pos.y, 0.0f) - ray_gen_pos);
+    float3 ray_dir = -normalize(params.sun_vector);
     // Add some angular variation to the ray direction to simulate the sun's spread
-    float3 ray_dir = initial_ray_dir + sampleRayDirection(params.max_sun_angle, launch_idx.x);
+    //float3 ray_dir = sampleRayDirection(params.max_sun_angle, ray_number);
 
     // Create the PerRayData structure to track ray state (e.g., path index and recursion depth)
     soltrace::PerRayData prd;
     prd.ray_path_index = ray_number;
     prd.depth = 0;
 
-    /*
-    params.hit_point_buffer[params.max_depth * prd.ray_path_index] = make_float4(0.0f, ray_gen_pos);
-    */
+    
+    //params.hit_point_buffer[params.max_depth * prd.ray_path_index] = make_float4(0.0f, ray_gen_pos);
+    
 
     // Cast and trace the ray through the scene
     optixTrace(

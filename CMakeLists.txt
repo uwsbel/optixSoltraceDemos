@@ -80,6 +80,7 @@
 # If you have any questions, don't feel shy about posting to the OptiX forums:
 # https://devtalk.nvidia.com/default/board/90/
 
+cmake_minimum_required(VERSION 3.18)
 
 # This sets up the name of our project.  For our purposes the main thing this controls is
 # the name of the VS solution file.
@@ -87,15 +88,11 @@ project(optixSoltrace)
 
 # This enforces a particular version of CMake that we require to process the script files
 # properly.  We rely on VERSION_GREATER_EQUAL which requires CMake v. 3.7.
-cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# As of CMake 2.6 policies were introduced in order to provide a mechanism for
-# adding backwards compatibility one feature at a time.  We will just specify
-# that all policies will use version 2.8.12 semantics.
-cmake_policy(VERSION 2.8.12)
+cmake_policy(VERSION 3.5)
 
 if( POLICY CMP0072 )
   # FindOpenGL prefers GLVND by default when available
@@ -508,6 +505,7 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
   target_link_libraries( ${target_name}
     ${CUDA_LIBRARIES}
     sutil_7_sdk
+    geometry
     )
 
   set_target_properties( ${target_name} PROPERTIES
@@ -544,13 +542,33 @@ function(copy_dll_to_bin target_name)
     endforeach()
 endfunction()
 
+
+#------------------------------------------------------------
+# Copy data directory to BUILD tree 
+# Install data directory 
+# Install sample template_project
+#------------------------------------------------------------
+
+get_property(MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(MULTI_CONFIG)
+    file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/bin/data/)
+    message(STATUS "Using a multi-config generator (${CMAKE_GENERATOR})")
+    message(STATUS "Data directory copied to: ${CMAKE_BINARY_DIR}/bin/data/")
+    message(STATUS "Binaries will be created in ${CMAKE_BINARY_DIR}/bin/<CONFIGURATION>/")
+else()
+    file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/data/)
+    message(STATUS "Using a single configuration generator (${CMAKE_GENERATOR})")
+    message(STATUS "Data directory copied to: ${CMAKE_BINARY_DIR}/data/")
+    message(STATUS "Binaries will be created in ${CMAKE_BINARY_DIR}/bin/")
+endif()
+
 #########################################################
 #  List of samples found in subdirectories.
 #
 # If you wish to start your own sample, you can copy one of the sample's directories.
 # Just make sure you rename all the occurances of the sample's name in the C code as well
 # and the CMakeLists.txt file.
-
+add_subdirectory(lib)
 add_subdirectory(demos)
 
 #################################################################

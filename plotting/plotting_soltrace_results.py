@@ -71,12 +71,12 @@ def plot_trace(df, nrays:int = 100000, ntrace:int=100, show_sun_vector:bool=Fals
 
 if __name__ == "__main__":
     # folder directory
-    folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/build_Allie/bin/Release/"
+    folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/large_scene/"
 
-    filename = folder_dir + "demo_large_scene-hit_counts-1000000_rays_with_buffer.csv"
+    filename = folder_dir + "raydata_from_soltrace.csv"
     # filename = folder_dir + "toyproblem-hit_counts-1000000_rays_with_buffer.csv"
 
     df = pd.read_csv(filename)
 
     print(df)
-    plot_trace(df, nrays=100000, ntrace=200)
+    plot_trace(df, nrays=100000, ntrace=200, show_sun_vector=True)
