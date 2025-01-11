@@ -30,7 +30,8 @@ struct GeometryData
     enum Type
     {
         PARALLELOGRAM         = 0,
-        UNKNOWN_TYPE          = 1
+		CYLINDER_Y             = 1,  
+        UNKNOWN_TYPE          = 2
     };
 
     struct Parallelogram
@@ -53,6 +54,26 @@ struct GeometryData
         float3 anchor;
     };
 
+    
+	struct Cylinder_Y {
+		Cylinder_Y() = default;
+        Cylinder_Y(float3 center, float radius, float half_height, float3 base_x, float3 base_z)
+            : center(center)
+            , radius(radius)
+            , half_height(half_height)
+            , base_x(base_x)
+            , base_z(base_z) {
+			assert(dot(base_x, base_z) < 1e-3f);
+        }
+
+
+        float3 center;
+        float radius;
+		float half_height;
+		float3 base_x;   // x axis of the cylinder
+		float3 base_z;   // z axis of the cylinder
+	};
+    
     GeometryData() {};
 
     void setParallelogram( const Parallelogram& p )
@@ -68,11 +89,26 @@ struct GeometryData
         return parallelogram;
     }
 
+    void setCylinder_Y(const Cylinder_Y& c)
+    {
+        assert(type == UNKNOWN_TYPE);
+        type = CYLINDER_Y;
+        cylinder_y = c;
+    }
+
+    __host__ __device__ const Cylinder_Y& getCylinder_Y() const
+    {
+        assert(type == CYLINDER_Y);
+        return cylinder_y;
+    }
+
+
     Type type = UNKNOWN_TYPE;
 
     private:
     union
     {
         Parallelogram parallelogram;
+		Cylinder_Y cylinder_y;
     };
 };

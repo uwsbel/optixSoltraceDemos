@@ -11,3 +11,7 @@
 std::vector<GeometryData::Parallelogram> GenerateHeliostatsFromFile(std::string filename);
 
 void createGeometry(SoltraceState& state, std::vector<GeometryData::Parallelogram>& helistat_list, std::vector<GeometryData::Parallelogram>& receiver_list);
+
+void createGeometry_cyl_receiver(SoltraceState& state, 
+								 std::vector<GeometryData::Parallelogram>& helistat_list,
+								 std::vector<GeometryData::Cylinder_Y>& receiver_list);

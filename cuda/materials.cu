@@ -120,6 +120,46 @@ extern "C" __global__ void __closesthit__receiver()
     setPayload(prd);
 }
 
+extern "C" __global__ void __closesthit__receiver__cylinder__y()
+{
+    // Retrieve the hit group data and access the parallelogram geometry
+    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
+    const GeometryData::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
+
+    /*
+    float3 object_normal = make_float3( __uint_as_float( optixGetAttribute_0() ), __uint_as_float( optixGetAttribute_1() ),
+                                        __uint_as_float( optixGetAttribute_2() ) );
+    float3 world_normal  = normalize( optixTransformNormalFromObjectToWorldSpace( object_normal ) );
+    float3 ffnormal      = faceforward( world_normal, -optixGetWorldRayDirection(), world_normal );
+    */
+
+    // Incident ray properties (origin, direction, and max t distance)
+    const float3 ray_orig = optixGetWorldRayOrigin();
+    const float3 ray_dir = optixGetWorldRayDirection();
+    const float  ray_t = optixGetRayTmax();
+
+    // Compute the normal of the receiver and dot with ray direction to determine which side was hit
+    // TODO: this normal is hard coded based on how the geometry was defined, need to make more robust
+    //const float3 receiver_normal = cyl.base_x;
+    //const float dot_product = dot(ray_dir, receiver_normal);
+
+    float3 hit_point = ray_orig + ray_t * ray_dir;
+
+    soltrace::PerRayData prd = getPayload();
+    const int new_depth = prd.depth + 1;
+
+    // Check if the ray hits the receiver surface (dot product negative means ray is hitting the front face)
+    //if (dot_product < 0.0f) {
+        if (new_depth < params.max_depth) {
+            params.hit_point_buffer[params.max_depth * prd.ray_path_index + new_depth] = make_float4(2.0f, hit_point);
+            prd.depth = new_depth;
+        }
+    //}
+
+    setPayload(prd);
+}
+
+
 extern "C" __global__ void __miss__ms()
 {
     // No action is taken here.

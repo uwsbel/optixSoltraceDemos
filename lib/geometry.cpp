@@ -6,6 +6,11 @@
 #include <sstream>
 #include <cuda_runtime.h>
 #include <sutil/Exception.h>
+#include <cfloat> // For FLT_MAX
+
+
+// this one need to be refactored
+// Cuda/optix ones has to be separated from non-cuda ones
 
 
 // PRE-PROCESSING SCENE GEOMETRY AND SUN DEFINITION
@@ -265,6 +270,61 @@ inline OptixAabb parallelogram_bound(float3 v1, float3 v2, float3 anchor)
     };
 }
 
+
+// compute the AABB for a cylinder
+OptixAabb ComputeCylinderYBound(GeometryData::Cylinder_Y cyl)
+{
+    float3 base_z = cyl.base_z;
+    float3 base_x = cyl.base_x;
+    float3 center = cyl.center;
+	float radius = cyl.radius;
+	float half_height = cyl.half_height;
+
+    // Compute the base_y axis (cross product of base_z and base_x)
+    float3 base_y = normalize(cross(base_z, base_x));
+
+    // Local corners of the cylinder in its coordinate system
+    float3 local_min = { -radius, -half_height, -radius };
+    float3 local_max = { radius, half_height, radius };
+
+    // Eight corners of the cylinder in local coordinates
+    float3 corners[] = {
+        make_float3(local_min.x, local_min.y, local_min.z),
+        make_float3(local_min.x, local_min.y, local_max.z),
+        make_float3(local_min.x, local_max.y, local_min.z),
+        make_float3(local_min.x, local_max.y, local_max.z),
+        make_float3(local_max.x, local_min.y, local_min.z),
+        make_float3(local_max.x, local_min.y, local_max.z),
+        make_float3(local_max.x, local_max.y, local_min.z),
+        make_float3(local_max.x, local_max.y, local_max.z),
+    };
+
+    // Transform corners to world coordinates and find the min/max bounds
+    float3 global_min = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
+    float3 global_max = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+    for (const auto& corner : corners)
+    {
+        // Transform the corner from local to global coordinates
+        float3 world_corner = center
+            + corner.x * base_x
+            + corner.y * base_y
+            + corner.z * base_z;
+
+        // Update the global AABB bounds
+        global_min = fminf(global_min, world_corner);
+        global_max = fmaxf(global_max, world_corner);
+    }
+
+	printf("Cylinder AABB: (%f, %f, %f) - (%f, %f, %f)\n",
+		global_min.x, global_min.y, global_min.z,
+		global_max.x, global_max.y, global_max.z);
+
+    // Return the global AABB
+    return { global_min.x, global_min.y, global_min.z, global_max.x, global_max.y, global_max.z };
+}
+
+
 // Build custom primitives (parallelograms for now, TODO generalize)
 // add variable of the list of heliostats
 void createGeometry(SoltraceState& state, 
@@ -290,6 +350,103 @@ void createGeometry(SoltraceState& state,
 	for (int i = 0; i < num_receivers; i++) {
 		aabb_list[num_heliostats + i] = parallelogram_bound(receiver_list[i].v1, receiver_list[i].v2, receiver_list[i].anchor);
 	}
+
+    // Container to store all vertices
+    std::vector<soltrace::BoundingBoxVertex> bounding_box_vertices;
+
+    // Collect all vertices from AABBs
+    collectAllAABBVertices(aabb_list.data(), obj_count, bounding_box_vertices);
+
+    // Pass the vertices to computeBoundingSunBox
+    computeBoundingSunBox(state, bounding_box_vertices);
+
+    // Allocate memory on the device for the AABB array.
+    CUdeviceptr d_aabb;
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_aabb
+        ), obj_count * sizeof(OptixAabb)));
+    CUDA_CHECK(cudaMemcpy(
+        reinterpret_cast<void*>(d_aabb),
+        aabb_list.data(),
+        obj_count * sizeof(OptixAabb),
+        cudaMemcpyHostToDevice
+    ));
+
+    // initialize aabb_input_flags vector
+    std::vector<uint32_t> aabb_input_flags(obj_count);
+    for (int i = 0; i < obj_count; i++) {
+        aabb_input_flags[i] = OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT;
+    }
+
+    // Define shader binding table (SBT) indices for each geometry. TODO generalize
+    std::vector<uint32_t> sbt_index(obj_count);
+    for (int i = 0; i < obj_count; i++) {
+        sbt_index[i] = i;
+    }
+
+    // host to device
+    CUdeviceptr    d_sbt_index;
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sbt_index), obj_count * sizeof(uint32_t)));
+    CUDA_CHECK(cudaMemcpy(
+        reinterpret_cast<void*>(d_sbt_index),
+        sbt_index.data(),
+        obj_count * sizeof(uint32_t),
+        cudaMemcpyHostToDevice));
+
+    // Configure the input for the GAS build process.
+    OptixBuildInput aabb_input = {};
+    aabb_input.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
+    aabb_input.customPrimitiveArray.aabbBuffers = &d_aabb;
+    aabb_input.customPrimitiveArray.flags = aabb_input_flags.data();
+    aabb_input.customPrimitiveArray.numSbtRecords = obj_count;
+    aabb_input.customPrimitiveArray.numPrimitives = obj_count;
+    aabb_input.customPrimitiveArray.sbtIndexOffsetBuffer = d_sbt_index;
+    aabb_input.customPrimitiveArray.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
+    aabb_input.customPrimitiveArray.primitiveIndexOffset = 0;
+
+    // Set up acceleration structure (AS) build options.
+    OptixAccelBuildOptions accel_options = {
+        OPTIX_BUILD_FLAG_ALLOW_COMPACTION,  // buildFlags. Enable compaction to reduce memory usage.
+        OPTIX_BUILD_OPERATION_BUILD         // operation. Build a new acceleration structure (not an update).
+    };
+
+    // Build the GAS using the defined AABBs and options.
+    buildGas(
+        state,             // Application state with OptiX context.
+        accel_options,     // Build options.
+        aabb_input,        // AABB input description.
+        state.gas_handle,  // Output: traversable handle for the GAS.
+        state.d_gas_output_buffer // Output: device buffer for the GAS.
+    );
+
+    CUDA_CHECK(cudaFree((void*)d_aabb));
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_sbt_index)));
+}
+
+
+// TODO: duplicated code!!! need to refactor 
+void createGeometry_cyl_receiver(SoltraceState& state,
+    std::vector<GeometryData::Parallelogram>& heliostat_list,
+    std::vector<GeometryData::Cylinder_Y>& receiver_list)
+{
+    int num_heliostats = heliostat_list.size();
+    int num_receivers = receiver_list.size();
+    // TODO: receiver is treated as one for now, change that
+    int obj_count = num_heliostats + num_receivers;
+    //std::vector<OptixAabb> aabb_list;
+    // optixaabb vector where the size is the number of objects + 1 for the receiver
+    std::vector<OptixAabb> aabb_list;
+    aabb_list.resize(obj_count);
+
+
+    //OptixAabb aabb[OBJ_COUNT];
+    for (int i = 0; i < num_heliostats; i++) {
+
+        aabb_list[i] = parallelogram_bound(heliostat_list[i].v1, heliostat_list[i].v2, heliostat_list[i].anchor);
+    }
+
+    for (int i = 0; i < num_receivers; i++) {
+        aabb_list[num_heliostats + i] = ComputeCylinderYBound(receiver_list[i]);
+    }
 
     // Container to store all vertices
     std::vector<soltrace::BoundingBoxVertex> bounding_box_vertices;
