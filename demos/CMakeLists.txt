@@ -19,7 +19,7 @@ foreach(PROGRAM ${DEMOS})
         ${SAMPLES_CUDA_DIR}/GeometryDataST.h
         ${SAMPLES_CUDA_DIR}/MaterialDataST.h
         ${SAMPLES_CUDA_DIR}/sun.cu
-        ${SAMPLES_CUDA_DIR}/parallelogram.cu
+        ${SAMPLES_CUDA_DIR}/intersection.cu
         ${SAMPLES_CUDA_DIR}/materials.cu
         ${PROGRAM}.cpp
     )

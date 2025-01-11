@@ -77,7 +77,7 @@ void createModules( SoltraceState &state )
         //    inputSize                     // Output: Size of the input CUDA source code.
         //);
 
-		std::string ptx = loadPtxFromFile("parallelogram");
+		std::string ptx = loadPtxFromFile("intersection");
 
         OPTIX_CHECK_LOG(optixModuleCreate(
             state.context,                       // OptiX context for the application.
