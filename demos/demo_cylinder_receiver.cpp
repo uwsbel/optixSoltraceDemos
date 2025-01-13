@@ -593,7 +593,7 @@ int main(int argc, char* argv[])
     //);
 
     // vertical cylinder 
-    float3 cyl_center = make_float3(0, -0.894427f, 9.552786f);
+    float3 cyl_center = make_float3(0, 0.0f, 10.0f);
     float cyl_radius = 1.0;
     float half_height = 1.2;
     float3 cyl_base_x = make_float3(1, 0, 0);
