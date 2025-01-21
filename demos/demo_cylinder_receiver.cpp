@@ -190,7 +190,7 @@ static void createReceiverProgram( SoltraceState &state, std::vector<OptixProgra
     radiance_receiver_prog_group_desc.kind   = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
     // Link the intersection shader (geometry handling) to the geometry module.
     radiance_receiver_prog_group_desc.hitgroup.moduleIS               = state.geometry_module;
-    radiance_receiver_prog_group_desc.hitgroup.entryFunctionNameIS    = "__intersection__cylinder_y";
+    radiance_receiver_prog_group_desc.hitgroup.entryFunctionNameIS    = "__intersection__cylinder_y_capped";
     // Link the closest-hit shader (shading logic) to the shading module.
     radiance_receiver_prog_group_desc.hitgroup.moduleCH               = state.shading_module;
     radiance_receiver_prog_group_desc.hitgroup.entryFunctionNameCH    = "__closesthit__receiver__cylinder__y";

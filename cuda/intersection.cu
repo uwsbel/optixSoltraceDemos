@@ -126,3 +126,128 @@ extern "C" __global__ void __intersection__cylinder_y()
         __float_as_uint(world_hit_point.y)
     );
 }
+
+// ray cylinder intersection with top and bottom caps 
+// it can also be modeled as cylinder with two disks. 
+extern "C" __global__ void __intersection__cylinder_y_capped()
+{
+    // Load shader binding table (SBT) and access data specific to this hit group
+    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
+    const GeometryData::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
+
+    // Get ray information: origin, direction, and min/max distances over which ray should be tested
+    const float3 ray_orig = optixGetWorldRayOrigin();
+    const float3 ray_dir = normalize(optixGetWorldRayDirection());
+    const float  ray_tmin = optixGetRayTmin();
+    const float  ray_tmax = optixGetRayTmax();
+
+    // Transform ray to the cylinder's local coordinate system
+    float3 local_ray_orig = ray_orig - cyl.center;
+    float3 local_ray_dir = ray_dir;
+
+    // Transform using the cylinder's local basis
+    float3 local_x = cyl.base_x;
+    float3 local_z = cyl.base_z;
+    float3 local_y = cross(local_z, local_x);
+
+    local_ray_orig = make_float3(
+        dot(local_ray_orig, local_x),
+        dot(local_ray_orig, local_y),
+        dot(local_ray_orig, local_z)
+    );
+    local_ray_dir = make_float3(
+        dot(local_ray_dir, local_x),
+        dot(local_ray_dir, local_y),
+        dot(local_ray_dir, local_z)
+    );
+
+    // Solve quadratic equation for intersection with curved surface
+    float A = local_ray_dir.x * local_ray_dir.x + local_ray_dir.z * local_ray_dir.z;
+    float B = 2.0f * (local_ray_orig.x * local_ray_dir.x + local_ray_orig.z * local_ray_dir.z);
+    float C = local_ray_orig.x * local_ray_orig.x + local_ray_orig.z * local_ray_orig.z - cyl.radius * cyl.radius;
+
+    float determinant = B * B - 4.0f * A * C;
+
+    float t_curved = ray_tmax + 1.0f; // Initialize to invalid
+    if (determinant >= 0.0f)
+    {
+        // Compute intersection distances
+        float t1 = (-B - sqrtf(determinant)) / (2.0f * A);
+        float t2 = (-B + sqrtf(determinant)) / (2.0f * A);
+
+        // Select the closest valid intersection within bounds
+        if (t1 > ray_tmin && t1 < ray_tmax && fabsf(local_ray_orig.y + t1 * local_ray_dir.y) <= cyl.half_height)
+        {
+            t_curved = t1;
+        }
+        else if (t2 > ray_tmin && t2 < ray_tmax && fabsf(local_ray_orig.y + t2 * local_ray_dir.y) <= cyl.half_height)
+        {
+            t_curved = t2;
+        }
+    }
+
+    // Check intersection with top and bottom caps
+    float t_caps = ray_tmax + 1.0f;
+    {
+        // Bottom cap: y = -half_height
+        if (fabsf(local_ray_dir.y) > 1e-6f) // Avoid division by zero
+        {
+            float t = (-cyl.half_height - local_ray_orig.y) / local_ray_dir.y;
+            float2 hit_point = make_float2(local_ray_orig.x + t * local_ray_dir.x,
+                local_ray_orig.z + t * local_ray_dir.z);
+            if (t > ray_tmin && t < ray_tmax && dot(hit_point, hit_point) <= cyl.radius * cyl.radius)
+            {
+                t_caps = t;
+            }
+        }
+
+        // Top cap: y = +half_height
+        if (fabsf(local_ray_dir.y) > 1e-6f)
+        {
+            float t = (cyl.half_height - local_ray_orig.y) / local_ray_dir.y;
+            float2 hit_point = make_float2(local_ray_orig.x + t * local_ray_dir.x,
+                local_ray_orig.z + t * local_ray_dir.z);
+            if (t > ray_tmin && t < ray_tmax && dot(hit_point, hit_point) <= cyl.radius * cyl.radius)
+            {
+                t_caps = fminf(t_caps, t);
+            }
+        }
+    }
+
+    // Use the closest valid intersection
+    float t = fminf(t_curved, t_caps);
+    if (t >= ray_tmax || t <= ray_tmin)
+    {
+        return; // No valid intersection
+    }
+
+    // Compute intersection point and normal
+    float3 local_hit_point = local_ray_orig + t * local_ray_dir;
+    float3 local_normal;
+
+    if (t == t_curved)
+    {
+        // Hit on the curved surface
+        local_normal = normalize(make_float3(local_hit_point.x, 0.0f, local_hit_point.z));
+    }
+    else
+    {
+        // Hit on one of the caps
+        local_normal = make_float3(0.0f, signbit(local_hit_point.y) ? -1.0f : 1.0f, 0.0f);
+    }
+
+    // Transform normal back to world coordinates
+    float3 world_normal = local_normal.x * local_x + local_normal.y * local_y + local_normal.z * local_z;
+
+    // Compute world-space hit point
+    float3 world_hit_point = ray_orig + t * ray_dir;
+
+    // Report intersection to OptiX
+    optixReportIntersection(
+        t,
+        0, // User-defined instance ID or custom data
+        float3_as_args(world_normal),
+        __float_as_uint(world_hit_point.x),
+        __float_as_uint(world_hit_point.y)
+    );
+}
