@@ -564,69 +564,96 @@ void writeVectorToCSV(const std::string& filename, const std::vector<float4>& da
 
 int main(int argc, char* argv[])
 {
+
+    bool USE_LARGE_SCENE = true;
+	int num_sun_points = 1000000;
+
+    if (argc == 3)
+	{		
+		USE_LARGE_SCENE = std::stoi(argv[1]);
+        num_sun_points = std::stoi(argv[2]);
+	}
+
+
+
     SoltraceState state;
 	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
 
 	std::vector<GeometryData::Parallelogram> heliostat_list;
 	std::vector<GeometryData::Cylinder_Y> receiver_list;
 
-    // Scene Setup
-    GeometryData::Parallelogram heliostat1(
-        make_float3(-1.0f, 0.0f, 0.0f),    // v1
-        make_float3(0.0f, 1.897836f, 0.448018f),    // v2
-        make_float3(0.5f, 4.051082f, -0.224009f)  // anchor
-    );
-    GeometryData::Parallelogram heliostat2(
-        make_float3(0.0f, 1.0f, 0.0f),    // v1
-        make_float3(1.897836f, 0.0f, 0.448018f),    // v2
-        make_float3(4.051082f, -0.5f, -0.224009f)  // anchor
-    );
-    GeometryData::Parallelogram heliostat3(
-        make_float3(0.0f, -1.0f, 0.0f),    // v1
-        make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
-        make_float3(-4.051082f, 0.5f, -0.224009f)  // anchor
-    );
-    //GeometryData::Parallelogram receiver(
-    //    make_float3(2.0f, 0.0f, 0.0f),    // v1
-    //    make_float3(0.0f, 1.788854f, 0.894428f),    // v2
-    //    make_float3(-1.0f, -0.894427f, 9.552786f)     // anchor
-    //);
-
     // vertical cylinder 
-    float3 cyl_center = make_float3(0, 0.0f, 10.0f);
-    float cyl_radius = 1.0;
-    float half_height = 1.2;
     float3 cyl_base_x = make_float3(1, 0, 0);
     float3 cyl_base_z = make_float3(0, -1, 0);
 
-	// horizontal cylinder
- //   float3 cyl_center = make_float3(0, -0.894427f, 9.552786f);
- //   float cyl_radius = 2.5;
- //   float half_height = 1.2;
-	//float3 cyl_base_x = make_float3(0, 1, 0);
-	//float3 cyl_base_z = make_float3(0, 0, 1);
-	GeometryData::Cylinder_Y receiver(
+    float3 cyl_center;
+	float cyl_radius, half_height;
+
+    if (!USE_LARGE_SCENE) {
+        // Scene Setup
+        GeometryData::Parallelogram heliostat1(
+            make_float3(-1.0f, 0.0f, 0.0f),    // v1
+            make_float3(0.0f, 1.897836f, 0.448018f),    // v2
+            make_float3(0.5f, 4.051082f, -0.224009f)  // anchor
+        );
+        GeometryData::Parallelogram heliostat2(
+            make_float3(0.0f, 1.0f, 0.0f),    // v1
+            make_float3(1.897836f, 0.0f, 0.448018f),    // v2
+            make_float3(4.051082f, -0.5f, -0.224009f)  // anchor
+        );
+        GeometryData::Parallelogram heliostat3(
+            make_float3(0.0f, -1.0f, 0.0f),    // v1
+            make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
+            make_float3(-4.051082f, 0.5f, -0.224009f)  // anchor
+        );
+
+        heliostat_list.push_back(heliostat1);
+        heliostat_list.push_back(heliostat2);
+        heliostat_list.push_back(heliostat3);
+
+        
+		// assign receiver properties
+        float3 cyl_center = make_float3(0, 0.0f, 10.0f);
+        float cyl_radius = 1.0;
+        float half_height = 1.2;
+
+    }
+
+    else {
+
+        // read from file 
+        std::string heliostat_data_file = "../data/csv/field_142417_elements.csv";
+        heliostat_list = GenerateHeliostatsFromFile(heliostat_data_file);
+
+		cyl_center = make_float3(0, 0.0f, 195.0f);
+        cyl_radius = 9.0;
+        half_height = 22.0;
+    }
+
+
+    GeometryData::Cylinder_Y receiver(
         cyl_center,
         cyl_radius,
-		half_height,
-		cyl_base_x,
-		cyl_base_z
-	);
+        half_height,
+        cyl_base_x,
+        cyl_base_z
+    );
 
-	heliostat_list.push_back(heliostat1);
-	heliostat_list.push_back(heliostat2);
-	heliostat_list.push_back(heliostat3);
+    receiver_list.push_back(receiver);
 
-	receiver_list.push_back(receiver);
 
     // Start the timer
     auto start = std::chrono::high_resolution_clock::now();
 
     try
     {
-        state.params.sun_vector = make_float3(0.0f, 0.0f, 100.0f);
+        //state.params.sun_vector = make_float3(0.0f, 0.0f, 100.0f);
+        //state.params.max_sun_angle = 0.00465;     // 4.65 mrad
+
+        state.params.sun_vector = make_float3(-235.034, -5723.13, 8196.98);
         state.params.max_sun_angle = 0.00465;     // 4.65 mrad
-        state.params.num_sun_points = 1000000;
+
+        state.params.num_sun_points = num_sun_points;
 
         state.params.width  = state.params.num_sun_points;
         state.params.height = 1;
