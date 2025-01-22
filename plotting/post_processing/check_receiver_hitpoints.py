@@ -63,18 +63,27 @@ if __name__ == "__main__":
 
     SOLVER = "optix"
     SURFACE = "CYLINDRICAL"
-    folder_dir = "C:/optixSoltraceDemos_build/bin/Release/"
+    # folder_dir = "C:/optixSoltraceDemos_build/bin/Release/"
+    folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/build_debug/bin/Release/"
     filename = folder_dir + "cyl_receiver.csv"
     # R, H, C radius, height, and center of receiver
-    R = 1.0
-    H = 2.4
-    C = np.array([0.0, 0.0, 10.0])
+    # R = 1.0
+    # H = 2.4
+    # C = np.array([0.0, 0.0, 10.0])
+
+    # R, H, C radius, height, and center of receiver
+    R = 9.0
+    H = 22
+    C = np.array([0.0, 0.0, 195.0])
+
     # BASE_X, BASE_Z local x-z (Circle plane)
     BASE_X = np.array([1.0, 0.0, 0.0])
     BASE_Z = np.array([0.0, -1.0, 0.0])
 
     # SOLVER = "solTrace"
     # SURFACE = "CYLINDRICAL"
+    # folder = "C:/Users/fang/Documents/NREL_SOLAR/optix/optixSoltraceDemos/data/stinputs/"
+    # filename = folder + "raydata_0_slope_error.csv"
     # folder = "C:/Users/allie/Documents/SolTrace/"
     # filename = folder + "small-system-soltrace-raydata-cyl.csv"
     # R = 1.0
