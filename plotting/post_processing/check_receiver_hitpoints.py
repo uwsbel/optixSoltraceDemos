@@ -61,37 +61,38 @@ if __name__ == "__main__":
     # v2 = np.array([0.0, 0, 7])
     # anchor = np.array([-4.5, 0.0, 76.5])
 
-    SOLVER = "optix"
-    SURFACE = "CYLINDRICAL"
-    # folder_dir = "C:/optixSoltraceDemos_build/bin/Release/"
-    folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/build_debug/bin/Release/"
-    filename = folder_dir + "cyl_receiver.csv"
-    # R, H, C radius, height, and center of receiver
+    # SOLVER = "optix"
+    # SURFACE = "CYLINDRICAL"
+    # # folder_dir = "C:/optixSoltraceDemos_build/bin/Release/"
+    # # folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/build_debug/bin/Release/"
+    # folder_dir = "C:/Users/allie/Documents/SolTrace/hit_point_data/"
+    # filename = folder_dir + "cyl_receiver_vertical_capped_gpu_15384138_rays_raydata_cleaned.csv"
+    # # R, H, C radius, height, and center of receiver
     # R = 1.0
     # H = 2.4
     # C = np.array([0.0, 0.0, 10.0])
 
     # R, H, C radius, height, and center of receiver
-    R = 9.0
-    H = 22
-    C = np.array([0.0, 0.0, 195.0])
+    # R = 9.0
+    # H = 22
+    # C = np.array([0.0, 0.0, 195.0])
 
     # BASE_X, BASE_Z local x-z (Circle plane)
     BASE_X = np.array([1.0, 0.0, 0.0])
     BASE_Z = np.array([0.0, -1.0, 0.0])
 
-    # SOLVER = "solTrace"
-    # SURFACE = "CYLINDRICAL"
+    SOLVER = "solTrace"
+    SURFACE = "CYLINDRICAL"
     # folder = "C:/Users/fang/Documents/NREL_SOLAR/optix/optixSoltraceDemos/data/stinputs/"
     # filename = folder + "raydata_0_slope_error.csv"
-    # folder = "C:/Users/allie/Documents/SolTrace/"
-    # filename = folder + "small-system-soltrace-raydata-cyl.csv"
-    # R = 1.0
-    # H = 2.4
-    # C = np.array([0.0, 0.0, 10.0])
-    # # BASE_X, BASE_Z local x-z (Circle plane)
-    # BASE_X = np.array([1.0, 0.0, 0.0])
-    # BASE_Z = np.array([0.0, -1.0, 0.0])
+    folder = "C:/Users/allie/Documents/SolTrace/hit_point_data/"
+    filename = folder + "cyl_receiver_vertical_capped_cpu_15384138_rays_raydata.csv"
+    R = 1.0
+    H = 2.4
+    C = np.array([0.0, 0.0, 10.0])
+    # BASE_X, BASE_Z local x-z (Circle plane)
+    BASE_X = np.array([1.0, 0.0, 0.0])
+    BASE_Z = np.array([0.0, -1.0, 0.0])
 
     receiver_pts_global = extract_receiver_points(filename, SOLVER)
 
@@ -130,6 +131,18 @@ if __name__ == "__main__":
         theta = np.arctan2(translated_pts[:, 1], translated_pts[:, 0])
         # Compute height (z) along the cylinder's axis
         z = np.dot(translated_pts, cylinder_axis)
+
+        # Filter out points that are on the caps
+        cap_tolerance = 1e-6  # Adjust tolerance as needed
+        is_on_cap = np.logical_or(
+            np.abs(z - np.min(z)) < cap_tolerance,  # Points on bottom cap
+            np.abs(z - np.max(z)) < cap_tolerance   # Points on top cap
+        )
+        curved_surface_points = ~is_on_cap  # Invert to get points on the curved surface
+
+        # Apply the filter
+        theta = theta[curved_surface_points]
+        z = z[curved_surface_points]
 
         # Map cylindrical coordinates to x-y plane 
         x_local = R * theta

@@ -614,9 +614,9 @@ int main(int argc, char* argv[])
 
         
 		// assign receiver properties
-        float3 cyl_center = make_float3(0, 0.0f, 10.0f);
-        float cyl_radius = 1.0;
-        float half_height = 1.2;
+        cyl_center = make_float3(0, 0.0f, 10.0f);
+        cyl_radius = 1.0;
+        half_height = 1.2;
 
     }
 
