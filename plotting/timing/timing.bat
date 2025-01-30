@@ -1,15 +1,15 @@
 @echo off
-cd /d "C:\optixSoltraceDemos_build\bin\Release"
+cd /d "C:\Users\fang\Documents\NREL_SOLAR\optix\build_debug\bin\Release"
 
-REM Run 10 times to average
+
 for /l %%i in (1,1,10) do (
     REM Loop through input sets
-    for %%j in (30 200 1700) do (
-        for %%k in (10000 100000 1000000 10000000 100000000) do (
-            demo_large_scene.exe %%j %%k >> timing_results.log
-        )
+    for %%k in (100000, 500000, 1000000, 10000000) do (
+        demo_cylinder_receiver.exe 1 %%k >> timing_results.log
     )
 )
+
+
 
 REM Keep the window open to view output
 pause

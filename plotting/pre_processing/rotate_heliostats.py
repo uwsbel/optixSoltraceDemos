@@ -24,8 +24,8 @@ import io
 
 
 
-parallelogram_dim_x = 9
-parallelogram_dim_y = 6
+parallelogram_dim_x = 3
+parallelogram_dim_y = 3
 
 def read_input(filename):
     loc_x = []
@@ -141,13 +141,14 @@ def calculate_rotated_corners(position, surface_normal, width, height):
     return rotated_corners
 
 # read csv file
-folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/large_scene/"
+folder_dir = "C:/Users/fang/Documents/NREL_SOLAR/optix/optixSoltraceDemos/data/stinputs/"
+
 # filename = folder_dir + "small-system-coordinates.csv"
-filename = folder_dir + "small-system.stinput"
+filename = folder_dir + "large-system-flat-heliostats-cylindrical.stinput"
 # filename = folder_dir + "large-system-coordinates.csv"
 loc_x, loc_y, loc_z, aim_pt_x, aim_pt_y, aim_pt_z = read_input(filename)
 
-PLOT = False
+PLOT = True
 
 # Now plot aim points in 3D space
 if PLOT:
@@ -160,6 +161,8 @@ if PLOT:
 
 # now also plot loc points, for now use scatter, blue colored, marker should be a square
 test_id = len(loc_x)
+
+test_id = 5000
 
 # create a csv file to store the results
 # header is x,y,z,nx,ny,nz,R0_x,R0_y,R0_z,R1_x,R1_y,R1_z,R2_x,R2_y,R2_z,R3_x,R3_y,R3_z

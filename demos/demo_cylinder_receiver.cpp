@@ -575,9 +575,10 @@ int main(int argc, char* argv[])
 	}
 
 
-
     SoltraceState state;
 	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
+
+	std::cout << "number of sun rays: " << num_sun_points << std::endl;
 
 	std::vector<GeometryData::Parallelogram> heliostat_list;
 	std::vector<GeometryData::Cylinder_Y> receiver_list;
@@ -627,7 +628,7 @@ int main(int argc, char* argv[])
 
 		cyl_center = make_float3(0, 0.0f, 195.0f);
         cyl_radius = 9.0;
-        half_height = 22.0;
+        half_height = 11.0;
     }
 
 
@@ -693,13 +694,13 @@ int main(int argc, char* argv[])
         std::cout << "Execution time ray launch: " << duration_ms_buff.count() << " milliseconds" << std::endl;
 
         // Stop the timer
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        std::cout << "Execution time full sim: " << duration_ms.count() << " milliseconds" << std::endl;
 
         // Copy hit point results from device memory
         std::vector<float4> hp_output_buffer(state.params.width * state.params.height * state.params.max_depth);
         CUDA_CHECK(cudaMemcpy(hp_output_buffer.data(), state.params.hit_point_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout << "Execution time full sim: " << duration_ms.count() << " milliseconds" << std::endl;
 
         // Copy reflected direction results from device memory
         /*
@@ -707,7 +708,7 @@ int main(int argc, char* argv[])
         CUDA_CHECK(cudaMemcpy(rd_output_buffer.data(), state.params.reflected_dir_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
         */
 
-        writeVectorToCSV("cyl_receiver.csv", hp_output_buffer);
+        //writeVectorToCSV("cyl_receiver.csv", hp_output_buffer);
 
         cleanupState(state);
     }
