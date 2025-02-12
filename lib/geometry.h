@@ -15,3 +15,8 @@ void createGeometry(SoltraceState& state, std::vector<GeometryData::Parallelogra
 void createGeometry_cyl_receiver(SoltraceState& state, 
 								 std::vector<GeometryData::Parallelogram>& helistat_list,
 								 std::vector<GeometryData::Cylinder_Y>& receiver_list);
+
+
+void createGeometry_parabolic(SoltraceState& state, 
+							  std::vector<GeometryData::Rectangle_Parabolic>& helistat_list, 
+							  std::vector<GeometryData::Parallelogram>& receiver_list);

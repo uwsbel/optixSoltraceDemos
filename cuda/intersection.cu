@@ -1,6 +1,7 @@
 #include <optix.h>
 #include <cuda/helpers.h>
 #include "Soltrace.h"
+#include <stdio.h>
 
 extern "C" __global__ void __intersection__parallelogram()
 {
@@ -250,4 +251,166 @@ extern "C" __global__ void __intersection__cylinder_y_capped()
         __float_as_uint(world_hit_point.x),
         __float_as_uint(world_hit_point.y)
     );
+}
+
+
+#include <optix.h>
+#include <cuda/helpers.h>
+#include "Soltrace.h"
+
+// __intersection__rectangle_parabolic
+//
+// For a parabolic rectangle the base (flat projection) is defined by the anchor and two edges.
+// In a local coordinate system (with origin at the anchor) the flat rectangle covers:
+//    x in [0, L1]  and  y in [0, L2],
+// where L1 and L2 are the lengths of the original edge vectors.
+// The parabolic surface is given by:
+//    z = (curv_x/2)*x^2 + (curv_y/2)*y^2
+// and the ray (in local coordinates) is:
+//    (ox,oy,oz) + t*(dx,dy,dz)
+// We solve for t such that:
+//    oz + t*dz = (curv_x/2)*(ox+t*dx)^2 + (curv_y/2)*(oy+t*dy)^2
+// which expands into a quadratic: A*t^2 + B*t + C = 0.
+// After finding the valid t, we compute the local hit (x,y) and then check that
+//   0 <= x <= L1   and   0 <= y <= L2.
+// Finally, we compute the surface normal from the paraboloid derivative
+//    f_x = curv_x * x    and    f_y = curv_y * y,
+// so that the (unnormalized) local normal is (-f_x, -f_y, 1).
+//
+// The local hit point is then transformed back to world space for reporting.
+extern "C" __global__ void __intersection__rectangle_parabolic()
+{
+    // Load shader binding table (SBT) data and retrieve the parabolic rectangle.
+    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
+    const GeometryData::Rectangle_Parabolic& rect = sbt_data->geometry_data.getRectangleParabolic();
+
+    // Get ray information.
+    const float3 ray_orig = optixGetWorldRayOrigin();
+    const float3 ray_dir = optixGetWorldRayDirection();
+    const float  ray_tmin = optixGetRayTmin();
+    const float  ray_tmax = optixGetRayTmax();
+
+    //
+    // Build the local coordinate system.
+    //
+    // We assume that the rectangle was defined with an anchor at its corner and
+    // two edge vectors. The stored rect.v1 and rect.v2 are the reciprocals:
+    //     stored_v1 = original_v1 / dot(original_v1, original_v1)
+    // Thus, the original edge lengths are:
+    float L1 = 1.0f / length(rect.v1);
+    float L2 = 1.0f / length(rect.v2);
+    // And the unit edge directions are:
+    float3 e1 = rect.v1 * L1; // recovers the original direction of edge 1
+    float3 e2 = rect.v2 * L2; // recovers the original direction of edge 2
+    // The flat (undeformed) rectangle’s normal is:
+    float3 n = normalize(cross(e2, e1));
+
+    //
+    // Transform ray into local coordinates.
+    // The local coordinates (x,y,z) are defined such that:
+    //   - The origin is at rect.anchor.
+    //   - The x-axis is e1.
+    //   - The y-axis is e2.
+    //   - The z-axis is n.
+    //
+    float3 d = ray_orig - rect.anchor;
+    float ox = dot(d, e1);
+    float oy = dot(d, e2);
+    float oz = dot(d, n);
+
+    float dx = dot(ray_dir, e1);
+    float dy = dot(ray_dir, e2);
+    float dz = dot(ray_dir, n);
+
+    // Retrieve curvature parameters.
+    const float curv_x = rect.curv_x;
+    const float curv_y = rect.curv_y;
+
+    float A = (curv_x * 0.5f) * (dx * dx) + (curv_y * 0.5f) * (dy * dy);
+    float B = curv_x * (ox * dx) + curv_y * (oy * dy) - dz;
+    float C = (curv_x * 0.5f) * (ox * ox) + (curv_y * 0.5f) * (oy * oy) - oz;
+
+    float t = 0.0f;
+    const float eps = 1e-12f;
+    bool valid = false;
+
+    if (fabsf(A) < eps) {
+        // Degenerate (linear) case.
+        t = -C / B;
+        valid = (t > 0.0f);
+    }
+    else {
+        float discr = B * B - 4.0f * A * C;
+        if (discr >= 0.0f) {
+            float sqrt_discr = sqrtf(discr);
+            float t1 = (-B - sqrt_discr) / (2.0f * A);
+            float t2 = (-B + sqrt_discr) / (2.0f * A);
+            // Choose the smallest positive t.
+            if (t1 > 0.0f && t1 < t2) {
+                t = t1;
+                valid = true;
+            }
+            else if (t2 > 0.0f) {
+                t = t2;
+                valid = true;
+            }
+        }
+    }
+
+    // Discard if no valid t or if t is not within the ray’s bounds.
+    if (!valid || t < ray_tmin || t > ray_tmax) {
+        return;
+    }
+
+    //
+    // Compute the local intersection coordinates.
+    //
+    float x_hit = ox + t * dx;
+    float y_hit = oy + t * dy;
+    // (Optionally, you could compute z_hit = oz + t*dz and verify it is near f(x,y).)
+
+    //
+    // Check if the hit is within the rectangle’s flat bounds.
+    // The parametric coordinates are:
+    //    a1 = x_hit / L1   and   a2 = y_hit / L2
+    //
+    float a1 = x_hit / L1;
+    float a2 = y_hit / L2;
+    if (a1 < 0.0f || a1 > 1.0f || a2 < 0.0f || a2 > 1.0f) {
+        return;
+    }
+
+    //
+    // Compute the surface normal at the hit on the paraboloid.
+    // The height function is:
+    //    f(x,y) = (curv_x/2)*x^2 + (curv_y/2)*y^2
+    // so its partial derivatives are:
+    //    f_x = curv_x * x    and    f_y = curv_y * y.
+    // Then the (unnormalized) local normal is:
+    //    N_local = (-f_x, -f_y, 1) = ( -curv_x*x_hit, -curv_y*y_hit, 1 ).
+    //
+    float3 N_local = normalize(make_float3(-curv_x * x_hit,
+        -curv_y * y_hit,
+        1.0f));
+    // Transform the normal back to world coordinates.
+    float3 world_normal = normalize(N_local.x * e1 +
+        N_local.y * e2 +
+        N_local.z * n);
+
+    // Compute the hit point in world space.
+    float3 world_hit = ray_orig + t * ray_dir;
+
+	printf("Intersection at (%f, %f, %f) with normal local (%f, %f, %f)\n",
+		world_hit.x, world_hit.y, world_hit.z,
+        N_local.x, N_local.y, N_local.z);
+
+    // Report the intersection.
+    // Here, the two reported extra attributes are the parametric coordinates (a1, a2),
+    // encoded as unsigned integers.
+    optixReportIntersection(t, 0,
+        float3_as_args(world_normal),
+        __float_as_uint(a1),
+        __float_as_uint(a2));
+
+    
 }
