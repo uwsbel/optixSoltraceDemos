@@ -2,97 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-# ------------------------------
-# # 1) Define vectors
-# d = np.array([0, 0.09950373, -0.9950373])       # incident direction (unit)
-# n = np.array([-0.4480182, 0, -1.8978355])       # unnormalized normal
-# n_dot_n = np.dot(n, n)
-# d_dot_n = np.dot(d, n)
-
-# # reflection using unnormalized n
-# r = d - 2.0 * (d_dot_n / n_dot_n) * n
-# print(r)
-
-# # For plotting clarity, we also define the anchor point at the origin:
-# origin = np.array([0, 0, 0])
-
-#
-# n_hat = n / np.linalg.norm(n)
-
-# ------------------------------
-# # 2) Set up the plot
-# fig = plt.figure(figsize=(6,6))
-# ax = fig.add_subplot(111, projection='3d')
-
-# # Draw the vectors:
-# def draw_vector(ax, start, vec, color, label):
-#     """ Utility to draw an arrow from start in direction of vec. """
-#     ax.quiver(
-#         start[0], start[1], start[2],
-#         vec[0],   vec[1],   vec[2],
-#         color=color, length=1.0, normalize=False,
-#         arrow_length_ratio=0.1, linewidth=2
-#     )
-#     ax.text(
-#         start[0] + vec[0], 
-#         start[1] + vec[1], 
-#         start[2] + vec[2],
-#         label, color=color
-#     )
-
-# draw_vector(ax, origin, d, 'blue', 'Incident')
-# draw_vector(ax, origin, n_hat, 'red', 'Normal')
-# draw_vector(ax, origin, r, 'green', 'Reflection')
-
-# # ------------------------------
-# # 3) Make it look nice
-# max_range = 1.2
-# ax.set_xlim([-max_range, max_range])
-# ax.set_ylim([-max_range, max_range])
-# ax.set_zlim([-max_range, max_range])
-# ax.set_xlabel('X')
-# ax.set_ylabel('Y')
-# ax.set_zlabel('Z')
-# ax.set_title('Reflection off a Plane')
-
-# plt.show()
-
-
 # Requires: pip install shapely
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
-
-# --- Reflection code from earlier---
-d = np.array([0, 0.09950373, -0.9950373])       # incident direction (unit)
-n = np.array([-0.4480182, 0, -1.8978355])       # unnormalized normal
-n_dot_n = np.dot(n, n)
-d_dot_n = np.dot(d, n)
-r = d - 2.0 * (d_dot_n / n_dot_n) * n           # reflection vector (unnormalized)
-
-# plane1: Heliostat plane
-# plane2: Receiver plane
-plane1_point = np.array([-4.05108223553502, 0.49999999999999994, -0.224009])
-plane1_normal = np.array([-0.4480182, 0, -1.8978355])
-
-plane2_point = np.array([-1.0, -0.894427, 9.552786])
-plane2_normal = np.array([0, -0.447214, 0.894427])  # same as above
-
-# Line-plane intersection
-def line_plane_intersect(point_3d, dir_3d, plane_point, plane_normal):
-    denom = np.dot(dir_3d, plane_normal)
-    if abs(denom) < 1e-9:
-        return None
-    t = np.dot((plane_point - point_3d), plane_normal) / denom
-    return point_3d + t * dir_3d
-
-# Project corners of rect_corners onto plane along proj_dir
-def project_corners(rect_corners, proj_dir, plane_point, plane_normal):
-    out_pts = []
-    for corner in rect_corners:
-        ipt = line_plane_intersect(corner, proj_dir, plane_point, plane_normal)
-        if ipt is not None:
-            out_pts.append(ipt)
-    return np.array(out_pts)
 
 # GPU heliostat geometry
 # rect1_3d = np.array([
@@ -121,6 +33,47 @@ rect2_3d = np.array([
     [1.0, 0.894427, 10.447214],
     [-1.0, 0.894427, 10.447214],
 ])
+
+# --- Reflection code from earlier---
+d = np.array([0, 0.09950373, -0.9950373])       # incident direction (unit)
+# n = np.array([-0.4480182, 0, -1.8978355])       # unnormalized normal
+# compute normal from heliostat corner data above instead
+n = np.cross(rect1_3d[1] - rect1_3d[0], rect1_3d[2] - rect1_3d[1])
+n /= np.linalg.norm(n)
+n_dot_n = np.dot(n, n)
+d_dot_n = np.dot(d, n)
+r = d - 2.0 * (d_dot_n / n_dot_n) * n           # reflection vector (unnormalized)
+
+# plane1: Heliostat plane
+# plane2: Receiver plane
+# plane1_point = np.array([-4.05108223553502, 0.49999999999999994, -0.224009])
+# plane1_normal = np.array([-0.4480182, 0, -1.8978355])
+
+# plane2_point = np.array([-1.0, -0.894427, 9.552786])
+# plane2_normal = np.array([0, -0.447214, 0.894427])
+plane1_point = rect1_3d[0]
+plane1_normal = n
+
+plane2_point = rect2_3d[0]
+plane2_normal = np.cross(rect2_3d[1] - rect2_3d[0], rect2_3d[2] - rect2_3d[1])
+plane2_normal /= np.linalg.norm(plane2_normal)
+
+# Line-plane intersection
+def line_plane_intersect(point_3d, dir_3d, plane_point, plane_normal):
+    denom = np.dot(dir_3d, plane_normal)
+    if abs(denom) < 1e-9:
+        return None
+    t = np.dot((plane_point - point_3d), plane_normal) / denom
+    return point_3d + t * dir_3d
+
+# Project corners of rect_corners onto plane along proj_dir
+def project_corners(rect_corners, proj_dir, plane_point, plane_normal):
+    out_pts = []
+    for corner in rect_corners:
+        ipt = line_plane_intersect(corner, proj_dir, plane_point, plane_normal)
+        if ipt is not None:
+            out_pts.append(ipt)
+    return np.array(out_pts)
 
 # 1) Project rect1_3d onto plane2 using the reflection vector r
 projected_rect = project_corners(rect1_3d, r, plane2_point, plane2_normal)
