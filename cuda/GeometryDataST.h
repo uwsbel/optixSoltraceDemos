@@ -30,8 +30,9 @@ struct GeometryData
     enum Type
     {
         PARALLELOGRAM         = 0,
-		CYLINDER_Y             = 1,  
-        UNKNOWN_TYPE          = 2
+		CYLINDER_Y            = 1,  
+		RECTANGLE_PARABOLIC   = 2,
+        UNKNOWN_TYPE          = 3
     };
 
     struct Parallelogram
@@ -73,6 +74,32 @@ struct GeometryData
 		float3 base_x;   // x axis of the cylinder
 		float3 base_z;   // z axis of the cylinder
 	};
+
+    struct Rectangle_Parabolic {
+
+		Rectangle_Parabolic() = default;
+		Rectangle_Parabolic(float3 v1, float3 v2, float3 anchor, float curv_x, float curv_y)
+			: v1(v1)
+			, v2(v2)
+			, anchor(anchor)
+			, curv_x(curv_x)
+			, curv_y(curv_y)
+		{
+			float3 normal = normalize(cross(v1, v2));
+			float d = dot(normal, anchor);
+			this->v1 *= 1.0f / dot(v1, v1);
+			this->v2 *= 1.0f / dot(v2, v2);
+			plane = make_float4(normal, d);
+		}
+
+		float4 plane;
+		float3 v1;
+		float3 v2;
+		float3 anchor;
+		//float3 focus;
+        float curv_x;
+        float curv_y;
+    };
     
     GeometryData() {};
 
@@ -102,6 +129,19 @@ struct GeometryData
         return cylinder_y;
     }
 
+	void setRectangleParabolic(const Rectangle_Parabolic& r)
+	{
+		assert(type == UNKNOWN_TYPE);
+		type = RECTANGLE_PARABOLIC;
+		rectangle_parabolic = r;
+	}
+
+	__host__ __device__ const Rectangle_Parabolic& getRectangleParabolic() const
+	{
+		assert(type == RECTANGLE_PARABOLIC);
+		return rectangle_parabolic;
+	}
+
 
     Type type = UNKNOWN_TYPE;
 
@@ -110,5 +150,6 @@ struct GeometryData
     {
         Parallelogram parallelogram;
 		Cylinder_Y cylinder_y;
+        Rectangle_Parabolic rectangle_parabolic;
     };
 };

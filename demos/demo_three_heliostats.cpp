@@ -158,10 +158,10 @@ static void createMirrorProgram( SoltraceState &state, std::vector<OptixProgramG
     radiance_mirror_prog_group_desc.kind   = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
     // Link the intersection shader (geometry handling) to the geometry module.
     radiance_mirror_prog_group_desc.hitgroup.moduleIS               = state.geometry_module;
-    radiance_mirror_prog_group_desc.hitgroup.entryFunctionNameIS    = "__intersection__parallelogram";
+    radiance_mirror_prog_group_desc.hitgroup.entryFunctionNameIS    = "__intersection__rectangle_parabolic";
     // Link the closest-hit shader (shading logic) to the shading module.
     radiance_mirror_prog_group_desc.hitgroup.moduleCH               = state.shading_module;
-    radiance_mirror_prog_group_desc.hitgroup.entryFunctionNameCH    = "__closesthit__mirror";
+    radiance_mirror_prog_group_desc.hitgroup.entryFunctionNameCH    = "__closesthit__mirror__parabolic";
     // No any-hit shader is used in this configuration (set to nullptr).
     radiance_mirror_prog_group_desc.hitgroup.moduleAH               = nullptr;
     radiance_mirror_prog_group_desc.hitgroup.entryFunctionNameAH    = nullptr;
@@ -310,7 +310,7 @@ void createPipeline( SoltraceState &state )
 // Ccreate and configure the Shader Binding Table (SBT).
 // The SBT is a crucial data structure in OptiX that links geometry and ray types
 // with their corresponding programs (ray generation, miss, and hit group).
-void createSBT(SoltraceState& state, std::vector<GeometryData::Parallelogram>& helistat_list, std::vector<GeometryData::Parallelogram> receiver_list)
+void createSBT(SoltraceState& state, std::vector<GeometryData::Rectangle_Parabolic>& helistat_list, std::vector<GeometryData::Parallelogram> receiver_list)
 {
     int num_heliostats = helistat_list.size();
     int num_receivers = receiver_list.size();
@@ -385,7 +385,7 @@ void createSBT(SoltraceState& state, std::vector<GeometryData::Parallelogram>& h
             OPTIX_CHECK(optixSbtRecordPackHeader(
                 state.radiance_mirror_prog_group,
                 &hitgroup_records_list[sbt_idx]));
-            hitgroup_records_list[sbt_idx].data.geometry_data.setParallelogram(helistat_list[i]);
+            hitgroup_records_list[sbt_idx].data.geometry_data.setRectangleParabolic(helistat_list[i]);
             hitgroup_records_list[sbt_idx].data.material_data.mirror = {
                 0.875425f, // Reflectivity.
                 0.0f,  // Transmissivity.
@@ -567,25 +567,36 @@ int main(int argc, char* argv[])
     SoltraceState state;
 	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
 
-	std::vector<GeometryData::Parallelogram> heliostat_list;
+	std::vector<GeometryData::Rectangle_Parabolic> heliostat_list;
 	std::vector<GeometryData::Parallelogram> receiver_list;
 
     // Scene Setup
-    GeometryData::Parallelogram heliostat1(
+    double curv_x = 0.0170679;
+    double curv_y = 0.0370679;
+
+
+    // Scene setup
+    GeometryData::Rectangle_Parabolic heliostat1(
         make_float3(-1.0f, 0.0f, 0.0f),    // v1
         make_float3(0.0f, 1.897836f, 0.448018f),    // v2
-        make_float3(0.5f, 4.051082f, -0.224009f)  // anchor
-    );
-    GeometryData::Parallelogram heliostat2(
+        make_float3(0.5f, 4.051082f, -0.224009f),  // anchor
+		curv_x, curv_y
+	);
+    GeometryData::Rectangle_Parabolic heliostat2(
         make_float3(0.0f, 1.0f, 0.0f),    // v1
         make_float3(1.897836f, 0.0f, 0.448018f),    // v2
-        make_float3(4.051082f, -0.5f, -0.224009f)  // anchor
+        make_float3(4.051082f, -0.5f, -0.224009f),  // anchor
+        curv_x, curv_y
+
     );
-    GeometryData::Parallelogram heliostat3(
+    GeometryData::Rectangle_Parabolic heliostat3(
         make_float3(0.0f, -1.0f, 0.0f),    // v1
         make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
-        make_float3(-4.051082f, 0.5f, -0.224009f)  // anchor
+        make_float3(-4.051082f, 0.5f, -0.224009f),  // anchor
+        curv_x, curv_y
     );
+
+
     GeometryData::Parallelogram receiver(
         make_float3(2.0f, 0.0f, 0.0f),    // v1
         make_float3(0.0f, 1.788854f, 0.894428f),    // v2
@@ -605,14 +616,14 @@ int main(int argc, char* argv[])
     {
         state.params.sun_vector = make_float3(0.0f, 0.0f, 100.0f);
         state.params.max_sun_angle = 0.00465;     // 4.65 mrad
-        state.params.num_sun_points = 1000000;
+        state.params.num_sun_points = 10000;
 
         state.params.width  = state.params.num_sun_points;
         state.params.height = 1;
 
         // Initialize OptiX components
         createContext(state);
-        createGeometry(state, heliostat_list, receiver_list);
+        createGeometry_parabolic(state, heliostat_list, receiver_list);
         createPipeline(state);
         createSBT(state, heliostat_list, receiver_list);
         initLaunchParams(state);

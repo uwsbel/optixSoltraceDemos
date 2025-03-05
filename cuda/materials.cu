@@ -160,6 +160,76 @@ extern "C" __global__ void __closesthit__receiver__cylinder__y()
 }
 
 
+// Closest-hit for a parabolic mirror surface.
+// This function is nearly identical to __closesthit__mirror(), but is intended to be
+// used when the surface is a parabolic mirror. The intersection shader (e.g. 
+// __intersection__rectangle_parabolic) reports a normal that already accounts for the curvature.
+extern "C" __global__ void __closesthit__mirror__parabolic()
+{
+    // Optionally, you can access material data if needed:
+    // const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>( optixGetSbtDataPointer() );
+    // const MaterialData::Mirror& mirror = sbt_data->material_data.mirror;
+
+    // Retrieve the hit normal from the attributes.
+    // The intersection shader for the parabolic surface reported the normal (using float3_as_args)
+    // in the hit attributes. In many cases this normal is already in world space.
+    float3 object_normal = make_float3(__uint_as_float(optixGetAttribute_0()),
+        __uint_as_float(optixGetAttribute_1()),
+        __uint_as_float(optixGetAttribute_2()));
+    // If the normal reported by the intersection shader is in object space you can transform it;
+    // if it is already in world space, this call may be omitted.
+    float3 world_normal = normalize(optixTransformNormalFromObjectToWorldSpace(object_normal));
+
+    // Ensure that the normal is facing the incoming ray.
+    float3 ffnormal = faceforward(world_normal, -optixGetWorldRayDirection(), world_normal);
+
+    // Retrieve ray data.
+    const float3 ray_orig = optixGetWorldRayOrigin();
+    const float3 ray_dir = optixGetWorldRayDirection();
+    const float  ray_t = optixGetRayTmax();
+
+    // Compute the hit point.
+    const float3 hit_point = ray_orig + ray_t * ray_dir;
+
+    // Retrieve per–ray payload.
+    soltrace::PerRayData prd = getPayload();
+    const int new_depth = prd.depth + 1; // Increase recursion depth.
+
+    // Compute the reflected ray direction.
+    float3 reflected_dir = reflect(ray_dir, ffnormal);
+
+    // (Optional: Add noise to reflected_dir if desired.)
+
+    // If the new depth is below the maximum, trace the reflected ray.
+    if (new_depth < params.max_depth) {
+        // Save the hit point (for visualization or further processing).
+        params.hit_point_buffer[params.max_depth * prd.ray_path_index + new_depth] = make_float4(1.0f, hit_point);
+
+        prd.depth = new_depth;
+        optixTrace(
+            params.handle,          // Acceleration structure handle.
+            hit_point,              // Ray origin.
+            reflected_dir,          // Ray direction.
+            0.01f,                  // Minimum t to avoid self-intersection.
+            1e16f,                  // Maximum t.
+            0.0f,                   // Ray time.
+            OptixVisibilityMask(1), // Visibility mask.
+            OPTIX_RAY_FLAG_NONE,    // Ray flags.
+            soltrace::RAY_TYPE_RADIANCE,  // Ray type.
+            soltrace::RAY_TYPE_COUNT,     // Number of ray types.
+            soltrace::RAY_TYPE_RADIANCE,  // SBT offset for this ray type.
+            reinterpret_cast<unsigned int&>(prd.ray_path_index), // Ray path index.
+            reinterpret_cast<unsigned int&>(prd.depth)           // Current recursion depth.
+        );
+    }
+
+    // Store the updated payload.
+    setPayload(prd);
+}
+
+
+
+
 extern "C" __global__ void __miss__ms()
 {
     // No action is taken here.
