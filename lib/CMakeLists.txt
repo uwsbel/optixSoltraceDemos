@@ -1,6 +1,7 @@
 # Add the geometry implementation
 add_library(geometry STATIC
     geometry.cpp
+    SolTrSystem.cpp
 )
 
 # Make the library available for other targets

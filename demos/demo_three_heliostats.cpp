@@ -2,7 +2,7 @@
 // refactor, so things like loading shaders and creating modules are in separate cpp files
 
 
-
+#include <SolTrSystem.h>
 #include <cuda_runtime.h>
 #include <sampleConfig.h>
 #include <optix.h>
@@ -245,6 +245,7 @@ void createPipeline( SoltraceState &state )
     std::vector<OptixProgramGroup> program_groups;
 
     // Configure the pipeline compile options.
+	// numAttributeValues might need to be modified depending on the intersection program.
     state.pipeline_compile_options = {
         false,                                                  // usesMotionBlur: Disable motion blur.
         OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS,          // traversableGraphFlags: Allow only a single GAS.
@@ -564,6 +565,8 @@ void writeVectorToCSV(const std::string& filename, const std::vector<float4>& da
 
 int main(int argc, char* argv[])
 {
+    SolTrSystem st_system(10000);
+    
     SoltraceState state;
 	std::cout << "Starting Soltrace OptiX simulation..." << std::endl;
 

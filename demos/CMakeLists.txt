@@ -4,8 +4,9 @@
 
 set(DEMOS
     demo_three_heliostats
-    demo_large_scene
-    demo_cylinder_receiver
+    demo_refactor
+#    demo_large_scene
+#    demo_cylinder_receiver
 )
 
 message(STATUS "Adding demo programs for OptiX SolTrace ...")

@@ -489,6 +489,8 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
     ${generated_files}
     ${cmake_options}
     )
+  message(STATUS "Target ${target_name} source files: ${source_files}")
+
     
     # find_package( OpenGL REQUIRED )
 
