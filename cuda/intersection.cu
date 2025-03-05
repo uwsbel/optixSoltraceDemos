@@ -258,26 +258,6 @@ extern "C" __global__ void __intersection__cylinder_y_capped()
 #include <cuda/helpers.h>
 #include "Soltrace.h"
 
-// __intersection__rectangle_parabolic
-//
-// For a parabolic rectangle the base (flat projection) is defined by the anchor and two edges.
-// In a local coordinate system (with origin at the anchor) the flat rectangle covers:
-//    x in [0, L1]  and  y in [0, L2],
-// where L1 and L2 are the lengths of the original edge vectors.
-// The parabolic surface is given by:
-//    z = (curv_x/2)*x^2 + (curv_y/2)*y^2
-// and the ray (in local coordinates) is:
-//    (ox,oy,oz) + t*(dx,dy,dz)
-// We solve for t such that:
-//    oz + t*dz = (curv_x/2)*(ox+t*dx)^2 + (curv_y/2)*(oy+t*dy)^2
-// which expands into a quadratic: A*t^2 + B*t + C = 0.
-// After finding the valid t, we compute the local hit (x,y) and then check that
-//   0 <= x <= L1   and   0 <= y <= L2.
-// Finally, we compute the surface normal from the paraboloid derivative
-//    f_x = curv_x * x    and    f_y = curv_y * y,
-// so that the (unnormalized) local normal is (-f_x, -f_y, 1).
-//
-// The local hit point is then transformed back to world space for reporting.
 extern "C" __global__ void __intersection__rectangle_parabolic()
 {
     // Load shader binding table (SBT) data and retrieve the parabolic rectangle.
@@ -290,13 +270,6 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     const float  ray_tmin = optixGetRayTmin();
     const float  ray_tmax = optixGetRayTmax();
 
-    //
-    // Build the local coordinate system.
-    //
-    // We assume that the rectangle was defined with an anchor at its corner and
-    // two edge vectors. The stored rect.v1 and rect.v2 are the reciprocals:
-    //     stored_v1 = original_v1 / dot(original_v1, original_v1)
-    // Thus, the original edge lengths are:
     float L1 = 1.0f / length(rect.v1);
     float L2 = 1.0f / length(rect.v2);
     // And the unit edge directions are:
@@ -305,14 +278,7 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     // The flat (undeformed) rectangle’s normal is:
     float3 n = normalize(cross(e2, e1));
 
-    //
     // Transform ray into local coordinates.
-    // The local coordinates (x,y,z) are defined such that:
-    //   - The origin is at rect.anchor.
-    //   - The x-axis is e1.
-    //   - The y-axis is e2.
-    //   - The z-axis is n.
-    //
     float3 d = ray_orig - rect.anchor;
     float ox = dot(d, e1);
     float oy = dot(d, e2);
@@ -367,28 +333,18 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     //
     float x_hit = ox + t * dx;
     float y_hit = oy + t * dy;
-    // (Optionally, you could compute z_hit = oz + t*dz and verify it is near f(x,y).)
 
-    //
     // Check if the hit is within the rectangle’s flat bounds.
-    // The parametric coordinates are:
-    //    a1 = x_hit / L1   and   a2 = y_hit / L2
-    //
     float a1 = x_hit / L1;
     float a2 = y_hit / L2;
     if (a1 < 0.0f || a1 > 1.0f || a2 < 0.0f || a2 > 1.0f) {
         return;
     }
 
-    //
-    // Compute the surface normal at the hit on the paraboloid.
     // The height function is:
     //    f(x,y) = (curv_x/2)*x^2 + (curv_y/2)*y^2
     // so its partial derivatives are:
     //    f_x = curv_x * x    and    f_y = curv_y * y.
-    // Then the (unnormalized) local normal is:
-    //    N_local = (-f_x, -f_y, 1) = ( -curv_x*x_hit, -curv_y*y_hit, 1 ).
-    //
     float3 N_local = normalize(make_float3(-curv_x * x_hit,
         -curv_y * y_hit,
         1.0f));
@@ -399,10 +355,6 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
 
     // Compute the hit point in world space.
     float3 world_hit = ray_orig + t * ray_dir;
-
-	printf("Intersection at (%f, %f, %f) with normal local (%f, %f, %f)\n",
-		world_hit.x, world_hit.y, world_hit.z,
-        N_local.x, N_local.y, N_local.z);
 
     // Report the intersection.
     // Here, the two reported extra attributes are the parametric coordinates (a1, a2),

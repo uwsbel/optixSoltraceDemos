@@ -571,24 +571,6 @@ int main(int argc, char* argv[])
 	std::vector<GeometryData::Parallelogram> receiver_list;
 
     // Scene Setup
-    //GeometryData::Parallelogram heliostat1(
-    //    make_float3(-1.0f, 0.0f, 0.0f),    // v1
-    //    make_float3(0.0f, 1.897836f, 0.448018f),    // v2
-    //    make_float3(0.5f, 4.051082f, -0.224009f)  // anchor
-    //);
-    //GeometryData::Parallelogram heliostat2(
-    //    make_float3(0.0f, 1.0f, 0.0f),    // v1
-    //    make_float3(1.897836f, 0.0f, 0.448018f),    // v2
-    //    make_float3(4.051082f, -0.5f, -0.224009f)  // anchor
-    //);
-    //GeometryData::Parallelogram heliostat3(
-    //    make_float3(0.0f, -1.0f, 0.0f),    // v1
-    //    make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
-    //    make_float3(-4.051082f, 0.5f, -0.224009f)  // anchor
-    //);
- //   double curv_x = 0.000670679;
-	//double curv_y = 0.000670679;
-
     double curv_x = 0.0170679;
     double curv_y = 0.0370679;
 
@@ -600,19 +582,19 @@ int main(int argc, char* argv[])
         make_float3(0.5f, 4.051082f, -0.224009f),  // anchor
 		curv_x, curv_y
 	);
-    //GeometryData::Rectangle_Parabolic heliostat2(
-    //    make_float3(0.0f, 1.0f, 0.0f),    // v1
-    //    make_float3(1.897836f, 0.0f, 0.448018f),    // v2
-    //    make_float3(4.051082f, -0.5f, -0.224009f),  // anchor
-    //    curv_x, curv_y
+    GeometryData::Rectangle_Parabolic heliostat2(
+        make_float3(0.0f, 1.0f, 0.0f),    // v1
+        make_float3(1.897836f, 0.0f, 0.448018f),    // v2
+        make_float3(4.051082f, -0.5f, -0.224009f),  // anchor
+        curv_x, curv_y
 
-    //);
-    //GeometryData::Rectangle_Parabolic heliostat3(
-    //    make_float3(0.0f, -1.0f, 0.0f),    // v1
-    //    make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
-    //    make_float3(-4.051082f, 0.5f, -0.224009f),  // anchor
-    //    curv_x, curv_y
-    //);
+    );
+    GeometryData::Rectangle_Parabolic heliostat3(
+        make_float3(0.0f, -1.0f, 0.0f),    // v1
+        make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
+        make_float3(-4.051082f, 0.5f, -0.224009f),  // anchor
+        curv_x, curv_y
+    );
 
 
     GeometryData::Parallelogram receiver(
@@ -622,8 +604,8 @@ int main(int argc, char* argv[])
     );
 
 	heliostat_list.push_back(heliostat1);
-	//heliostat_list.push_back(heliostat2);
-	//heliostat_list.push_back(heliostat3);
+	heliostat_list.push_back(heliostat2);
+	heliostat_list.push_back(heliostat3);
 
 	receiver_list.push_back(receiver);
 
