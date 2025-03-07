@@ -18,6 +18,11 @@
 #include <sutil/sutil.h>
 #include <sutil/vec_math.h>
 #include <cuda/Soltrace.h>
+#include <lib/dataManager.h>
+#include <lib/pipelineManager.h>
+
+//TODO: shall I use float3 at the interface level? 
+
 
 using namespace soltrace;
 
@@ -40,61 +45,56 @@ class geometryManager {
 //    // void buildGAS(SoltraceState &state, ...);
 };
 
-class pipelineManager {
-public:
-    pipelineManager(SoltraceState& state);
-    ~pipelineManager();
+// class pipelineManager {
+// public:
+//     pipelineManager(SoltraceState& state);
+//     ~pipelineManager();
 
-    void createPipeline();
+//     void createPipeline();
 
-    OptixPipeline getPipeline() const;
+//     OptixPipeline getPipeline() const;
 
-private:
-    std::string loadPtxFromFile(const std::string& kernelName);
-    void loadModules();
-	void createSunProgram();
-	void createMirrorProgram();
-	void createReceiverProgram();
-	void createMissProgram();
-	SoltraceState& m_state;
-    std::vector<OptixProgramGroup> m_program_groups;
-}; 
-
-class dataManager {
-public:
-    dataManager();
-    ~dataManager();
-
-    // Allocate device memory for the launch parameters.
-    void allocateLaunchParams();
-
-    // Copy updated launch parameters to the device.
-    void updateLaunchParams();
-
-    soltrace::LaunchParams* getDeviceLaunchParams() const;
-
-    // ... similar methods for geometry buffers, output buffers, etc. ...
-
-public:
-	soltrace::LaunchParams host_launch_params;
-	// pointer to device memory for the launch parameters.
-	soltrace::LaunchParams* device_launch_params = nullptr;
-};
-
+// private:
+//     std::string loadPtxFromFile(const std::string& kernelName);
+//     void loadModules();
+// 	void createSunProgram();
+// 	void createMirrorProgram();
+// 	void createReceiverProgram();
+// 	void createMissProgram();
+// 	SoltraceState& m_state;
+//     std::vector<OptixProgramGroup> m_program_groups;
+// }; 
 
 //Interface to soltrace simulation system
- //wrapper around scene setup, pipeline, ray trace sim, post process, etc
- //hardward agnostic, can be extended for vulkan 
+//wrapper around scene setup, pipeline, ray trace sim, post process, etc
+//hardward agnostic, can be extended for vulkan 
 class SolTrSystem {
 public:
     SolTrSystem(int numSunPoints);
     ~SolTrSystem();
 
+    // add element
+    // void addElement(Element e);
+
+    // Call to this function mark the completion of the simulation setup
     void initialize();
+
+    // Execute the ray tracing simulation
     void run();
+
+    // Write the output to a file.
+    void writeOutput(const std::string& filename); 
 
     // Explicit cleanup, also invoked in the destructor.
     void cleanup();
+
+    // set methods 
+	void setVerbose(bool verbose);
+
+	void setSunPoints(int numSunPoints);
+
+	void setSunVector(float3 sunVector);
+
 
 
 private:
@@ -104,6 +104,8 @@ private:
     std::shared_ptr<dataManager>     data_manager;
 
     int m_num_sunpoints;
+    bool m_verbose; 
+
     SoltraceState m_state;
 
     void createSBT(std::vector<GeometryData::Rectangle_Parabolic>& helistat_list, std::vector<GeometryData::Parallelogram> receiver_list);

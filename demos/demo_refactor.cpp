@@ -26,6 +26,9 @@ int main(int argc, char* argv[]) {
         // Run the simulation (this calls optixLaunch internally).
         system.run();
 
+        // write the result to a file 
+		system.writeOutput("output_parabolic.txt");
+
         // Clean up all allocated resources.
         system.cleanup();
 
