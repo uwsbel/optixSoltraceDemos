@@ -11,7 +11,8 @@
 
 // this one need to be refactored
 // Cuda/optix ones has to be separated from non-cuda ones
-
+// note that the sun plane is part of the pre-processing
+// should be done after the geometry is created and before the launch? 
 
 // PRE-PROCESSING SCENE GEOMETRY AND SUN DEFINITION
 // Compute the sun's coordinate frame

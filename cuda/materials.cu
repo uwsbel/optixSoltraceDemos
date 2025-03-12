@@ -2,6 +2,8 @@
 #include <vector_types.h>
 #include "Soltrace.h"
 
+//TODO: closeshit should not be dependent on geometry!!!!!!!!!!!!
+
 // Launch parameters for soltrace
 extern "C" {
     __constant__ soltrace::LaunchParams params;

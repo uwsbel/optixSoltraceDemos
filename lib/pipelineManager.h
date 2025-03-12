@@ -17,13 +17,14 @@ public:
     void createPipeline();
     OptixPipeline getPipeline() const;
 
-    // Functions to create individual program groups.
-    void createSunProgram();
-    void createMirrorProgram();
+	// create all the sun, mirror, receiver, and miss programs
+    void createSunProgram();  // note: now we only have one source as ray gen, we can extend to more sources in here.
+
+    void createMirrorPrograms();
     void createReceiverProgram();
     void createMissProgram();
 
-	// function to create a hit group program given the intersection and closest hit programs
+	// helper function to create a hit group program given the intersection and closest hit programs
     void createHitGroupProgram(OptixProgramGroup& group,
                                OptixModule intersectionModule, 
                                const char* intersectionFunc,
@@ -32,7 +33,7 @@ public:
 
 private:
     SoltraceState& m_state;
-    std::vector<OptixProgramGroup> m_program_groups;
+    std::vector<OptixProgramGroup> m_program_groups;   // store all the program groups
 };
 
 #endif  // PIPELINEMANAGER_H

@@ -2,8 +2,6 @@
 #include <vector>
 #include <cuda_runtime.h>
 #include <optix.h>
-#include <sutil/vec_math.h>
-#include <SoltraceState.h>
 #include <sampleConfig.h>
 #include <optix_stack_size.h>
 #include <optix_stubs.h>
@@ -15,7 +13,7 @@
 #include <cuda/Soltrace.h>
 #include <lib/dataManager.h>
 
-
+#include <SoltraceState.h>
 #include <lib/pipelineManager.h>
 #include <fstream>
 
@@ -23,6 +21,18 @@
 char LOG[2048] = {};   // A mutable log buffer.
 size_t LOG_SIZE = sizeof(LOG);
 
+
+const char* intersectionFuncs[] = {
+    "__intersection__parallelogram",
+    "__intersection__cylinder_y",
+    "__intersection__rectangle_parabolic"
+};
+
+const char* closestHitFuncs[] = {
+    "__closesthit__mirror",
+    "__closesthit__mirror",
+    "__closesthit__mirror__parabolic"
+};
 
 pipelineManager::pipelineManager(SoltraceState& state) : m_state(state) {}
 
@@ -109,7 +119,7 @@ void pipelineManager::createPipeline()
     // Prepare modules and program groups
     loadModules();
     createSunProgram();
-    createMirrorProgram();
+    createMirrorPrograms();
     createReceiverProgram();
     createMissProgram();
 
@@ -215,16 +225,33 @@ void pipelineManager::createSunProgram()
 }
 
 // Create program group for handling rays interacting with mirrors.
-void pipelineManager::createMirrorProgram()
+void pipelineManager::createMirrorPrograms()
 {   
-	OptixProgramGroup group; // Handle for the program group.
 
-    createHitGroupProgram(group,
-        m_state.geometry_module, "__intersection__rectangle_parabolic",
-        m_state.shading_module,  "__closesthit__mirror__parabolic");
+    // number of mirror programs
+	size_t numMirrorPrograms = sizeof(intersectionFuncs) / sizeof(intersectionFuncs[0]);
 
-    m_program_groups.push_back(group);
-    m_state.radiance_mirror_prog_group = group;
+	for (size_t i = 0; i < numMirrorPrograms; i++) {
+		OptixProgramGroup group; 
+
+		createHitGroupProgram(group,
+            			      m_state.geometry_module, 
+                              intersectionFuncs[i],
+            			      m_state.shading_module, 
+                              closestHitFuncs[i]);
+
+		m_program_groups.push_back(group);
+        m_state.radiance_mirror_prog_group = group;
+	}   
+
+
+	//OptixProgramGroup group; // Handle for the program group.
+
+ //   createHitGroupProgram(group,
+ //       m_state.geometry_module, "__intersection__rectangle_parabolic",
+ //       m_state.shading_module,  "__closesthit__mirror__parabolic");
+
+ //   m_program_groups.push_back(group);
 }
 
 

@@ -254,10 +254,6 @@ extern "C" __global__ void __intersection__cylinder_y_capped()
 }
 
 
-#include <optix.h>
-#include <cuda/helpers.h>
-#include "Soltrace.h"
-
 // __intersection__rectangle_parabolic
 //
 // For a parabolic rectangle the base (flat projection) is defined by the anchor and two edges.
