@@ -11,7 +11,6 @@
 
 typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
 
-// -------------------- SolTrSystem Implementation --------------------
 SolTrSystem::SolTrSystem(int numSunPoints)
     : m_num_sunpoints(numSunPoints)
 {
@@ -43,13 +42,35 @@ void SolTrSystem::initialize() {
     std::vector<GeometryData::Rectangle_Parabolic> heliostats;
     std::vector<GeometryData::Parallelogram> receivers;
 
+	double curv_x = 0.0170679f;
+	double curv_y = 0.0370679f;
+
     // Create a heliostat.
-    GeometryData::Rectangle_Parabolic heliostat(
+    GeometryData::Rectangle_Parabolic heliostat1(
         make_float3(-1.0f, 0.0f, 0.0f),
         make_float3(0.0f, 1.897836f, 0.448018f),
         make_float3(0.5f, 4.051082f, -0.224009f),
         0.0170679f, 0.0370679f);  // curvature parameters
-    heliostats.push_back(heliostat);
+    heliostats.push_back(heliostat1);
+
+
+    GeometryData::Rectangle_Parabolic heliostat2(
+        make_float3(0.0f, 1.0f, 0.0f),    // v1
+        make_float3(1.897836f, 0.0f, 0.448018f),    // v2
+        make_float3(4.051082f, -0.5f, -0.224009f),  // anchor
+        curv_x, curv_y
+
+    );
+	heliostats.push_back(heliostat2);
+
+    GeometryData::Rectangle_Parabolic heliostat3(
+        make_float3(0.0f, -1.0f, 0.0f),    // v1
+        make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
+        make_float3(-4.051082f, 0.5f, -0.224009f),  // anchor
+        curv_x, curv_y
+    );
+    heliostats.push_back(heliostat3);
+
 
     // Create a receiver.
     GeometryData::Parallelogram receiver(
@@ -93,7 +114,7 @@ void SolTrSystem::initialize() {
     // Create a CUDA stream for asynchronous operations.
     CUDA_CHECK(cudaStreamCreate(&m_state.stream));
 
-
+    // TODO: need to get rid of the m_state.params 
     // Link the GAS handle.
     data_manager->host_launch_params.handle = m_state.gas_handle;
 	// now copy sun_v0, sun_v1, sun_v2, sun_v3 to launch params
