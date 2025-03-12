@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
         system.run();
 
         // write the result to a file 
-		system.writeOutput("output_parabolic.txt");
+		system.writeOutput("output_parabolic.csv");
 
         // Clean up all allocated resources.
         system.cleanup();

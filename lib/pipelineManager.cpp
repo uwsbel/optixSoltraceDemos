@@ -164,6 +164,30 @@ OptixPipeline pipelineManager::getPipeline() const {
 	return m_state.pipeline;
 }
 
+void pipelineManager::createHitGroupProgram(OptixProgramGroup& group,
+    OptixModule intersectionModule, const char* intersectionFunc,
+    OptixModule closestHitModule, const char* closestHitFunc) {
+    OptixProgramGroupOptions options = {};
+    OptixProgramGroupDesc desc = {};
+    desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
+    desc.hitgroup.moduleIS = intersectionModule;
+    desc.hitgroup.entryFunctionNameIS = intersectionFunc;
+    desc.hitgroup.moduleCH = closestHitModule;
+    desc.hitgroup.entryFunctionNameCH = closestHitFunc;
+    desc.hitgroup.moduleAH = nullptr;
+    desc.hitgroup.entryFunctionNameAH = nullptr;
+
+    OPTIX_CHECK_LOG(optixProgramGroupCreate(
+        m_state.context,
+        &desc,
+        1,
+        &options,
+        LOG, &LOG_SIZE,
+        &group
+    ));
+}
+
+// TODO: simplify 
 void pipelineManager::createSunProgram()
 {
     OptixProgramGroup           sun_prog_group;                 // Handle for the sun program group.
@@ -192,39 +216,23 @@ void pipelineManager::createSunProgram()
 
 // Create program group for handling rays interacting with mirrors.
 void pipelineManager::createMirrorProgram()
-{
-    OptixProgramGroup           radiance_mirror_prog_group;                 // Handle for the mirror program group.
-    OptixProgramGroupOptions    radiance_mirror_prog_group_options = {};    // Options for the program group (none needed).
-    OptixProgramGroupDesc       radiance_mirror_prog_group_desc = {};       // Descriptor for the program group.
+{   
+	OptixProgramGroup group; // Handle for the program group.
 
-    // Specify the kind of program group (Hit Group for handling intersections and shading).
-    radiance_mirror_prog_group_desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-    // Link the intersection shader (geometry handling) to the geometry module.
-    radiance_mirror_prog_group_desc.hitgroup.moduleIS = m_state.geometry_module;
-    radiance_mirror_prog_group_desc.hitgroup.entryFunctionNameIS = "__intersection__rectangle_parabolic";
-    // Link the closest-hit shader (shading logic) to the shading module.
-    radiance_mirror_prog_group_desc.hitgroup.moduleCH = m_state.shading_module;
-    radiance_mirror_prog_group_desc.hitgroup.entryFunctionNameCH = "__closesthit__mirror__parabolic";
-    // No any-hit shader is used in this configuration (set to nullptr).
-    radiance_mirror_prog_group_desc.hitgroup.moduleAH = nullptr;
-    radiance_mirror_prog_group_desc.hitgroup.entryFunctionNameAH = nullptr;
+    createHitGroupProgram(group,
+        m_state.geometry_module, "__intersection__rectangle_parabolic",
+        m_state.shading_module,  "__closesthit__mirror__parabolic");
 
-    // Create the program group
-    OPTIX_CHECK_LOG(optixProgramGroupCreate(
-        m_state.context,
-        &radiance_mirror_prog_group_desc,
-        1,
-        &radiance_mirror_prog_group_options,
-        LOG, &LOG_SIZE,
-        &radiance_mirror_prog_group));
-
-    m_program_groups.push_back(radiance_mirror_prog_group);
-    m_state.radiance_mirror_prog_group = radiance_mirror_prog_group;
+    m_program_groups.push_back(group);
+    m_state.radiance_mirror_prog_group = group;
 }
 
 // Create program group for handling rays interacting with the receiver.
 void pipelineManager::createReceiverProgram()
 {
+
+
+
     OptixProgramGroup           radiance_receiver_prog_group;               // Handle for the receiver program group.
     OptixProgramGroupOptions    radiance_receiver_prog_group_options = {};  // Options for the program group (none needed).
     OptixProgramGroupDesc       radiance_receiver_prog_group_desc = {};     // Descriptor for the program group.

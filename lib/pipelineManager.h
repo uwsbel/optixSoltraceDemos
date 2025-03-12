@@ -23,6 +23,13 @@ public:
     void createReceiverProgram();
     void createMissProgram();
 
+	// function to create a hit group program given the intersection and closest hit programs
+    void createHitGroupProgram(OptixProgramGroup& group,
+                               OptixModule intersectionModule, 
+                               const char* intersectionFunc,
+                               OptixModule closestHitModule, 
+                               const char* closestHitFunc);
+
 private:
     SoltraceState& m_state;
     std::vector<OptixProgramGroup> m_program_groups;
