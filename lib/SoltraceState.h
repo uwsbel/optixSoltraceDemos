@@ -6,7 +6,9 @@
 #include <cuda/Soltrace.h>
 #include <string>
 
-
+// TODO
+// members of this struct should be moved to pipelineManager, and dataManager class
+/// eventually there's no SoltraceState struct, but data, pipeline and geometry manager classes each have its own members. 
 struct SoltraceState
 {
     OptixDeviceContext          context                         = 0;
@@ -19,7 +21,7 @@ struct SoltraceState
 
     OptixProgramGroup           raygen_prog_group               = 0;
     OptixProgramGroup           radiance_miss_prog_group        = 0;
-    OptixProgramGroup           radiance_mirror_prog_group      = 0;
+    //OptixProgramGroup           radiance_mirror_prog_group      = 0;
     OptixProgramGroup           radiance_receiver_prog_group    = 0;
 
     OptixPipeline               pipeline                        = 0;

@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------
 
 set(DEMOS
-    demo_three_heliostats
+#    demo_three_heliostats
     demo_refactor
 #    demo_large_scene
 #    demo_cylinder_receiver

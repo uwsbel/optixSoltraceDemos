@@ -24,14 +24,17 @@ size_t LOG_SIZE = sizeof(LOG);
 
 const char* intersectionFuncs[] = {
     "__intersection__parallelogram",
-    "__intersection__cylinder_y",
     "__intersection__rectangle_parabolic"
 };
 
 const char* closestHitFuncs[] = {
     "__closesthit__mirror",
-    "__closesthit__mirror",
     "__closesthit__mirror__parabolic"
+};
+
+const char* closestHitReceiverFuncs[] = {
+	"__closesthit__receiver",
+	"__closesthit__receiver__cylinder__y"
 };
 
 pipelineManager::pipelineManager(SoltraceState& state) : m_state(state) {}
@@ -241,17 +244,9 @@ void pipelineManager::createMirrorPrograms()
                               closestHitFuncs[i]);
 
 		m_program_groups.push_back(group);
-        m_state.radiance_mirror_prog_group = group;
+        //m_state.radiance_mirror_prog_group = group;
 	}   
 
-
-	//OptixProgramGroup group; // Handle for the program group.
-
- //   createHitGroupProgram(group,
- //       m_state.geometry_module, "__intersection__rectangle_parabolic",
- //       m_state.shading_module,  "__closesthit__mirror__parabolic");
-
- //   m_program_groups.push_back(group);
 }
 
 
@@ -260,6 +255,8 @@ void pipelineManager::createMirrorPrograms()
 // in reflectivity and absorption? 
 void pipelineManager::createReceiverProgram()
 {
+
+    // flat receiver
     OptixProgramGroup           group;
 	createHitGroupProgram(group,
 		m_state.geometry_module, "__intersection__parallelogram",
@@ -267,6 +264,19 @@ void pipelineManager::createReceiverProgram()
 
     m_program_groups.push_back(group);
     m_state.radiance_receiver_prog_group = group;
+
+
+    // TODO: similar needs to be done for receiver program 
+	// THIS SHOULD COME AFTER FIGURING OUT IF WE NEED THE RECEIVER PROGRAM .......
+    // 
+	// cylinder receiver
+	//createHitGroupProgram(group,
+	//	m_state.geometry_module, "__intersection__cylinder_y",
+	//	m_state.shading_module, "__closesthit__receiver__cylinder__y");
+ //   
+	//m_program_groups.push_back(group);
+	//m_state.radiance_receiver_prog_group = group;
+
 }
 
 // Create program group for handling rays that miss all geometry.
@@ -293,4 +303,34 @@ void pipelineManager::createMissProgram()
 
     m_program_groups.push_back(group);
     m_state.radiance_miss_prog_group = group;
+}
+
+
+OptixProgramGroup pipelineManager::getMirrorProgram(SurfaceApertureMap map) const {
+    // TODO this part is still hard coded ... 
+	// squence are raygen, then heliostat, then receiver, then miss
+    // need to figure out a better way to arrange the table
+	// should be depenedent on intersection func array .... 
+
+	if (map.apertureType == ApertureType::RECTANGLE) {
+        if (map.surfaceType == SurfaceType::FLAT) {
+			std::cout << "returning mirror program group 1, rectangle flat" << std::endl;
+			return m_program_groups[1];
+		}
+        else if (map.surfaceType == SurfaceType::PARABOLIC) {
+			std::cout << "returning mirror program group 2, rectangle parabolic" << std::endl;
+			return m_program_groups[2];
+		}
+	}
+    else if (map.apertureType == ApertureType::CIRCLE) {
+        if (map.surfaceType == SurfaceType::FLAT) {
+			std::cout << "returning mirror program group 3, circle flat" << std::endl;
+			return m_program_groups[3];
+		}
+        else if (map.surfaceType == SurfaceType::PARABOLIC) {
+			std::cout << "returning mirror program group 4, circle parabolic" << std::endl;
+			return m_program_groups[4];
+		}
+	}
+
 }

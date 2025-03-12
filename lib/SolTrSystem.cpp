@@ -6,6 +6,7 @@
 #include <chrono>
 #include <iostream>
 #include <iomanip>
+#include <SoltraceType.h>
 
 
 typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
@@ -223,6 +224,7 @@ void SolTrSystem::createSBT(std::vector<GeometryData::Rectangle_Parabolic>& heli
     int obj_count = helistat_list.size() + receiver_list.size();
 
     // Ray generation program record
+	// TODO: Move this out of here, has nothing to do with the scene geometry
     {
         CUdeviceptr d_raygen_record;                   // Device pointer to hold the raygen SBT record.
         size_t      sizeof_raygen_record = sizeof(sutil::EmptyRecord);
@@ -287,14 +289,20 @@ void SolTrSystem::createSBT(std::vector<GeometryData::Rectangle_Parabolic>& heli
         // TODO: Material params - arbitrary right now
 
         for (int i = 0; i < helistat_list.size(); i++) {
-            // Configure Heliostat SBT record.
-            OPTIX_CHECK(optixSbtRecordPackHeader(m_state.radiance_mirror_prog_group, &hitgroup_records_list[sbt_idx]));
-            hitgroup_records_list[sbt_idx].data.geometry_data.setRectangleParabolic(helistat_list[i]);
-            hitgroup_records_list[sbt_idx].data.material_data.mirror = {
-                0.875425f, // Reflectivity.
-                0.0f,  // Transmissivity.
-                0.0f,  // Slope error.
-                0.0f   // Specularity error.
+            // HARDCODED FOR NOW!!!!!! TODO MODIFY THIS ONCE WE HAVE API SETUP FOR ELEMENTS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			// TODO:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // placeholder for now!!!! need to parameterize this part!!!!!
+            ///////////////////////////////////////////////////////////////
+			SurfaceApertureMap map = { SurfaceType::PARABOLIC, ApertureType::RECTANGLE };
+
+            OPTIX_CHECK(optixSbtRecordPackHeader(pipeline_manager->getMirrorProgram(map), 
+                                                 &hitgroup_records_list[sbt_idx]));
+                                                 hitgroup_records_list[sbt_idx].data.geometry_data.setRectangleParabolic(helistat_list[i]);
+                                                 hitgroup_records_list[sbt_idx].data.material_data.mirror = {
+                                                 0.875425f, // Reflectivity.
+                                                 0.0f,  // Transmissivity.
+                                                 0.0f,  // Slope error.
+                                                 0.0f   // Specularity error.
             };
             sbt_idx++;
         }

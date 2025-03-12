@@ -6,6 +6,7 @@
 #include <vector>
 #include "optix.h"
 #include <cuda/Soltrace.h>
+#include <SoltraceType.h>
 
 class pipelineManager {
 public:
@@ -31,9 +32,28 @@ public:
                                OptixModule closestHitModule, 
                                const char* closestHitFunc);
 
+	// a bunch of get methods to get the program groups
+	// TODO need to add implementation for sun, miss and receiver programs 
+	OptixProgramGroup getRaygenProgram() const;
+	OptixProgramGroup getMissProgram() const;
+	OptixProgramGroup getReceiverProgram() const;
+
+	// given heliostat type find the corresponding mirror programming group
+    OptixProgramGroup getMirrorProgram(SurfaceApertureMap map) const;
+
+
 private:
     SoltraceState& m_state;
     std::vector<OptixProgramGroup> m_program_groups;   // store all the program groups
+
+    // possible members ... 
+    // index for the program groups 
+    // TODO: this is hardcoded for now .... 
+    // need to think about what to do with this 
+	int num_raygen_programs = 1;
+    int num_heliostat_programs = 2;
+    int num_receiver_programs = 2; 
+	int num_miss_programs = 1;
 };
 
 #endif  // PIPELINEMANAGER_H
