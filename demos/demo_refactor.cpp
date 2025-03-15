@@ -45,10 +45,6 @@ int main(int argc, char* argv[]) {
         e1->set_aperture(aperture);
 		aperture->compute_device_aperture(origin, aim_point); // Compute the device aperture based on the origin and aim point
 
-		aperture->get_anchor(); // Get the anchor point of the aperture (optional, for debugging)
-		aperture->get_v1(); // Get the first vector of the aperture (optional, for debugging)
-		aperture->get_v2(); // Get the second vector of the aperture (optional, for debugging)
-
 		std::cout << "Element origin: " << e1->get_origin() << std::endl;
 		std::cout << "Element aim point: " << e1->get_aim_point() << std::endl;
 		float3 anchor = aperture->get_anchor(); // Get the anchor point of the aperture
@@ -57,14 +53,6 @@ int main(int argc, char* argv[]) {
 		std::cout << "Aperture v2: " << aperture->get_v2().x << ", " << aperture->get_v2().y << ", " << aperture->get_v2().z << std::endl;
 
 		system.AddElement(e1); // Add the element to the system
-
-        //// Create a heliostat.
-        //GeometryData::Rectangle_Parabolic heliostat1(
-        //    make_float3(-1.0f, 0.0f, 0.0f),
-        //    make_float3(0.0f, 1.897836f, 0.448018f),
-        //    make_float3(0.5f, 4.051082f, -0.224009f),
-        //    0.0170679f, 0.0370679f);  // curvature parameters
-        //heliostats.push_back(heliostat1);
 
 
 

@@ -250,9 +250,8 @@ std::vector<GeometryData::Parallelogram> GenerateHeliostatsFromFile(std::string 
 }
 
 // Compute an axis-aligned bounding box (AABB) for a parallelogram.
-//   v1, v2: Vectors defining the parallelogram's sides.
+//   v1, v2: Vectors defining the parallelogram's sides, parametrized to one over length
 //   anchor: The anchor point of the parallelogram.
-// TODO: check why it's v1/dot(v1,v1) if v1 and v2 define the actual edge. 
 inline OptixAabb parallelogram_bound(float3 v1, float3 v2, float3 anchor)
 {
     const float3 tv1 = v1 / dot(v1, v1);

@@ -16,8 +16,8 @@ SolTrSystem::SolTrSystem(int numSunPoints)
     : m_num_sunpoints(numSunPoints)
 {
 
-    // need to attach state to it
-    geometry_manager = std::make_shared<geometryManager>();
+    // TODO: Need to attach state to it
+    geometry_manager = std::make_shared<geometryManager>(m_state);
     data_manager = std::make_shared<dataManager>();
 
 
@@ -236,7 +236,7 @@ void SolTrSystem::cleanup() {
     // geometry_manager cleanup can be added when implemented.
 }
 
-// Ccreate and configure the Shader Binding Table (SBT).
+// Create and configure the Shader Binding Table (SBT).
 // The SBT is a crucial data structure in OptiX that links geometry and ray types
 // with their corresponding programs (ray generation, miss, and hit group).
 void SolTrSystem::createSBT(std::vector<GeometryData::Rectangle_Parabolic>& helistat_list, std::vector<GeometryData::Parallelogram> receiver_list)

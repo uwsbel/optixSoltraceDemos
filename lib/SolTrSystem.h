@@ -21,6 +21,7 @@
 #include <lib/dataManager.h>
 #include <lib/pipelineManager.h>
 #include <lib/Element.h>
+#include <optix_types.h>
 
 //TODO: shall I use float3 at the interface level? 
 
@@ -29,42 +30,35 @@ using namespace soltrace;
 
 
 class geometryManager {
-//public:
-//    geometryManager();
-//    ~geometryManager();
-//
-//    // Setup geometry for the scene.
-//    // This function takes the simulation state and vectors of geometry data (heliostats and receivers)
-//    // and builds the corresponding acceleration structures (GAS) for OptiX.
-//    void setupGeometry(SoltraceState& state,
-//        const std::vector<GeometryData::Rectangle_Parabolic>& heliostats,
-//        const std::vector<GeometryData::Parallelogram>& receivers);
-//
-//    // Optionally, you can add getters to retrieve geometry-related info if needed.
-//private:
-//    // Private helper functions can be added here, for example:
-//    // void buildGAS(SoltraceState &state, ...);
+public:
+	geometryManager(SoltraceState& state) : m_state(state) {}
+    ~geometryManager() {} 
+
+	// populate the AABB list from the elements
+    // AABB is for computing the sun plane and for buildGAS 
+	void populate_aabb_list(const std::vector<std::shared_ptr<Element>>& element_list) {}
+
+    // compute sun plane, use list of AABB and sun vector from m_state 
+	// to populate sun plane vectors in m_state 
+    // TODO: need to think about who owns this, pipeline? 
+    // top priority: create sun class
+    void compute_sun_plane() {
+		// update m_state usiing m_aabb_list
+    }
+
+	// build the GAS (Geometry Acceleration Structure) using the AABB list
+    void buildGas() {
+		// update m_state gas handles, etc, using m_aabb_list
+    }
+
+
+private: 
+	SoltraceState m_state;
+
+    // list of AABB vertices 
+    // TODO: using OptixAABB for now, but should be changed to host side data structure later
+	std::vector<OptixAabb> m_aabb_list;
 };
-
-// class pipelineManager {
-// public:
-//     pipelineManager(SoltraceState& state);
-//     ~pipelineManager();
-
-//     void createPipeline();
-
-//     OptixPipeline getPipeline() const;
-
-// private:
-//     std::string loadPtxFromFile(const std::string& kernelName);
-//     void loadModules();
-// 	void createSunProgram();
-// 	void createMirrorProgram();
-// 	void createReceiverProgram();
-// 	void createMissProgram();
-// 	SoltraceState& m_state;
-//     std::vector<OptixProgramGroup> m_program_groups;
-// }; 
 
 //Interface to soltrace simulation system
 //wrapper around scene setup, pipeline, ray trace sim, post process, etc
