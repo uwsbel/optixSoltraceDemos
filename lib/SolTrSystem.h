@@ -20,6 +20,7 @@
 #include <cuda/Soltrace.h>
 #include <lib/dataManager.h>
 #include <lib/pipelineManager.h>
+#include <lib/Element.h>
 
 //TODO: shall I use float3 at the interface level? 
 
@@ -95,6 +96,17 @@ public:
 
 	void setSunVector(float3 sunVector);
 
+    // get methods 
+	int get_num_heliostats() const
+	{
+		return m_element_list.size() - 1; // Return the number of heliostats (elements) added
+	}
+
+    int get_num_receivers() const {
+		return 1; // Assuming one receiver for now, can be modified later
+    }
+
+    void AddElement(std::shared_ptr<Element> element);
 
 
 private:
@@ -108,7 +120,11 @@ private:
 
     SoltraceState m_state;
 
+    std::vector<std::shared_ptr<Element>> m_element_list;
+
     void createSBT(std::vector<GeometryData::Rectangle_Parabolic>& helistat_list, std::vector<GeometryData::Parallelogram> receiver_list);
+
+
 
 
 };

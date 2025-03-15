@@ -10,21 +10,6 @@
 #define assert(x) /*nop*/
 #endif
 
-// unaligned equivalent of float2
-struct Vec2f
-{
-    __host__ __device__ operator float2() const { return { x, y }; }
-
-    float x, y;
-};
-
-struct Vec4f
-{
-    __host__ __device__ operator float4() const { return { x, y, z, w }; }
-
-    float x, y, z, w;
-};
-
 struct GeometryData
 {
     enum Type

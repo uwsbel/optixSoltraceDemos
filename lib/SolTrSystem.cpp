@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include <SoltraceType.h>
+#include <Element.h>
 
 
 typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
@@ -54,22 +55,22 @@ void SolTrSystem::initialize() {
     heliostats.push_back(heliostat1);
 
 
-    GeometryData::Rectangle_Parabolic heliostat2(
-        make_float3(0.0f, 1.0f, 0.0f),    // v1
-        make_float3(1.897836f, 0.0f, 0.448018f),    // v2
-        make_float3(4.051082f, -0.5f, -0.224009f),  // anchor
-        curv_x, curv_y
+ //   GeometryData::Rectangle_Parabolic heliostat2(
+ //       make_float3(0.0f, 1.0f, 0.0f),    // v1
+ //       make_float3(1.897836f, 0.0f, 0.448018f),    // v2
+ //       make_float3(4.051082f, -0.5f, -0.224009f),  // anchor
+ //       curv_x, curv_y
 
-    );
-	heliostats.push_back(heliostat2);
+ //   );
+	//heliostats.push_back(heliostat2);
 
-    GeometryData::Rectangle_Parabolic heliostat3(
-        make_float3(0.0f, -1.0f, 0.0f),    // v1
-        make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
-        make_float3(-4.051082f, 0.5f, -0.224009f),  // anchor
-        curv_x, curv_y
-    );
-    heliostats.push_back(heliostat3);
+ //   GeometryData::Rectangle_Parabolic heliostat3(
+ //       make_float3(0.0f, -1.0f, 0.0f),    // v1
+ //       make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
+ //       make_float3(-4.051082f, 0.5f, -0.224009f),  // anchor
+ //       curv_x, curv_y
+ //   );
+ //   heliostats.push_back(heliostat3);
 
 
     // Create a receiver.
@@ -309,17 +310,22 @@ void SolTrSystem::createSBT(std::vector<GeometryData::Rectangle_Parabolic>& heli
 
         // TODO: Material params - arbitrary right now
 
-        for (int i = 0; i < helistat_list.size(); i++) {
-            // HARDCODED FOR NOW!!!!!! TODO MODIFY THIS ONCE WE HAVE API SETUP FOR ELEMENTS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			// TODO:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            // placeholder for now!!!! need to parameterize this part!!!!!
-            ///////////////////////////////////////////////////////////////
-			SurfaceApertureMap map = { SurfaceType::PARABOLIC, ApertureType::RECTANGLE };
+        for (int i = 0; i < m_element_list.size(); i++) {
+
+			auto element = m_element_list.at(i);
+
+            // TODO: setRectangleParabolic should be matched automaitcally.
+			SurfaceType surface_type = element->get_surface_type();
+			ApertureType aperture_type = element->get_aperture_type();
+			SurfaceApertureMap map = { surface_type, aperture_type };
+            
+
 
             OPTIX_CHECK(optixSbtRecordPackHeader(pipeline_manager->getMirrorProgram(map), 
                                                  &hitgroup_records_list[sbt_idx]));
-                                                 hitgroup_records_list[sbt_idx].data.geometry_data.setRectangleParabolic(helistat_list[i]);
-                                                 hitgroup_records_list[sbt_idx].data.material_data.mirror = {
+            // assign geometry data to the corresponding hitgroup record 
+            hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
+            hitgroup_records_list[sbt_idx].data.material_data.mirror = {
                                                  0.875425f, // Reflectivity.
                                                  0.0f,  // Transmissivity.
                                                  0.0f,  // Slope error.
@@ -328,6 +334,7 @@ void SolTrSystem::createSBT(std::vector<GeometryData::Rectangle_Parabolic>& heli
             sbt_idx++;
         }
 
+        // TODO: perform the same way 
         for (int i = 0; i < num_receivers; i++) {
             // Configure Receiver SBT record.
             OPTIX_CHECK(optixSbtRecordPackHeader(
@@ -364,4 +371,9 @@ void SolTrSystem::createSBT(std::vector<GeometryData::Rectangle_Parabolic>& heli
         m_state.sbt.hitgroupRecordCount = count_records;                  // Total number of hitgroup records.
         m_state.sbt.hitgroupRecordStrideInBytes = static_cast<uint32_t>(sizeof_hitgroup_record);  // Stride size.
     }
+}
+
+void SolTrSystem::AddElement(std::shared_ptr<Element> e)
+{
+    m_element_list.push_back(e);
 }
