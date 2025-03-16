@@ -55,8 +55,27 @@ int main(int argc, char* argv[]) {
 		system.AddElement(e1); // Add the element to the system
 
 
+        // now we add the receiver 
+        GeometryData::Parallelogram receiver(
+            make_float3(2.0f, 0.0f, 0.0f),  // v1 
+            make_float3(0.0f, 1.788854f, 0.894428f),  // v2
+            make_float3(-1.0f, -0.894427f, 9.552786f));  // anchor point 
 
+		Vector3d receiver_origin(0, 0, 10.0); // origin of the receiver
+		Vector3d receiver_aim_point(0, 1.788856, 6.422292); // aim point of the receiver
+        double receiver_dim_x = 2.0;
+        double receiver_dim_y = 2.0;
 
+		auto e2 = std::make_shared<Element>();
+		e2->set_origin(receiver_origin);
+		e2->set_aim_point(receiver_aim_point); // Aim direction
+		auto receiver_aperture = std::make_shared<ApertureRectangle>(receiver_dim_x, receiver_dim_y);
+		e2->set_aperture(receiver_aperture);
+
+		auto receiver_surface = std::make_shared<SurfaceFlat>();
+		e2->set_surface(receiver_surface);
+
+		system.AddElement(e2); // Add the receiver to the system
 
         // Initialize the simulation:
         // This will set up the OptiX context, load the modules, create program groups,

@@ -40,62 +40,29 @@ SolTrSystem::~SolTrSystem() {
 
 void SolTrSystem::initialize() {
 
-    std::vector<GeometryData::Rectangle_Parabolic> heliostats;
-    std::vector<GeometryData::Parallelogram> receivers;
-
-	double curv_x = 0.0170679f;
-	double curv_y = 0.0370679f;
-
-    // Create a heliostat.
-    GeometryData::Rectangle_Parabolic heliostat1(
-        make_float3(-1.0f, 0.0f, 0.0f),
-        make_float3(0.0f, 1.897836f, 0.448018f),
-        make_float3(0.5f, 4.051082f, -0.224009f),
-        0.0170679f, 0.0370679f);  // curvature parameters
-    heliostats.push_back(heliostat1);
-
-
- //   GeometryData::Rectangle_Parabolic heliostat2(
- //       make_float3(0.0f, 1.0f, 0.0f),    // v1
- //       make_float3(1.897836f, 0.0f, 0.448018f),    // v2
- //       make_float3(4.051082f, -0.5f, -0.224009f),  // anchor
- //       curv_x, curv_y
-
- //   );
-	//heliostats.push_back(heliostat2);
-
- //   GeometryData::Rectangle_Parabolic heliostat3(
- //       make_float3(0.0f, -1.0f, 0.0f),    // v1
- //       make_float3(-1.897836f, 0.0f, 0.448018f),    // v2
- //       make_float3(-4.051082f, 0.5f, -0.224009f),  // anchor
- //       curv_x, curv_y
- //   );
- //   heliostats.push_back(heliostat3);
-
-
-    // Create a receiver.
-    GeometryData::Parallelogram receiver(
-        make_float3(2.0f, 0.0f, 0.0f),
-        make_float3(0.0f, 1.788854f, 0.894428f),
-        make_float3(-1.0f, -0.894427f, 9.552786f));
-    receivers.push_back(receiver);
-
-    // do this for state as well 
-    m_state.params.sun_vector = make_float3(0.0f, 0.0f, 100.0f);
+	float3 sun_vector = make_float3(0.0f, 1.0f, 100.0f); 
+    m_state.params.sun_vector = sun_vector;
     m_state.params.max_sun_angle = 0.00465;     // 4.65 mrad
 
+    // set up input related to sun
+    data_manager->host_launch_params.sun_vector = sun_vector;
+    data_manager->host_launch_params.max_sun_angle = 0.00465;     // 4.65 mrad
 
-    // Call your function to build the geometry acceleration structure.
-    // need to separate this from the sun part 
-    createGeometry_parabolic(m_state, heliostats, receivers);
+
+    // compute aabb box 
+    geometry_manager->populate_aabb_list(m_element_list);
+
+    // compute sun plane vertices
+    geometry_manager->compute_sun_plane();
+
+    // handles geoemtries building
+    geometry_manager->create_geometries();
+
     // Pipeline setup.
     pipeline_manager->createPipeline();
 
-    createSBT(heliostats, receivers);
+    createSBT();
 
-    // set up input related to sun
-	data_manager->host_launch_params.sun_vector = make_float3(0.0f, 0.0f, 100.0f);
-    data_manager->host_launch_params.max_sun_angle = 0.00465;     // 4.65 mrad
 
     // Initialize launch params
     data_manager->host_launch_params.width = m_num_sunpoints;
@@ -239,11 +206,9 @@ void SolTrSystem::cleanup() {
 // Create and configure the Shader Binding Table (SBT).
 // The SBT is a crucial data structure in OptiX that links geometry and ray types
 // with their corresponding programs (ray generation, miss, and hit group).
-void SolTrSystem::createSBT(std::vector<GeometryData::Rectangle_Parabolic>& helistat_list, std::vector<GeometryData::Parallelogram> receiver_list)
-{
-    int num_heliostats = helistat_list.size();
-    int num_receivers = receiver_list.size();
-    int obj_count = helistat_list.size() + receiver_list.size();
+void SolTrSystem::createSBT(){
+
+	int obj_count = m_element_list.size();  // Number of objects in the scene (heliostats + receivers)
 
     // Ray generation program record
 	// TODO: Move this out of here, has nothing to do with the scene geometry
@@ -309,8 +274,12 @@ void SolTrSystem::createSBT(std::vector<GeometryData::Rectangle_Parabolic>& heli
         int sbt_idx = 0; // Index to track current record.
 
         // TODO: Material params - arbitrary right now
+        // TODO: separate number of heliostats and receivers 
 
-        for (int i = 0; i < m_element_list.size(); i++) {
+        int num_heliostats = 1;
+		int num_receivers = 1;
+
+        for (int i = 0; i < num_heliostats; i++) {
 
 			auto element = m_element_list.at(i);
 
@@ -335,12 +304,13 @@ void SolTrSystem::createSBT(std::vector<GeometryData::Rectangle_Parabolic>& heli
         }
 
         // TODO: perform the same way 
-        for (int i = 0; i < num_receivers; i++) {
+        for (int i = num_heliostats; i < m_element_list.size(); i++) {
+			auto element = m_element_list.at(i);
             // Configure Receiver SBT record.
             OPTIX_CHECK(optixSbtRecordPackHeader(
                 m_state.radiance_receiver_prog_group,
                 &hitgroup_records_list[sbt_idx]));
-            hitgroup_records_list[sbt_idx].data.geometry_data.setParallelogram(receiver_list[i]);
+			hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
             hitgroup_records_list[sbt_idx].data.material_data.receiver = {
                 0.95f, // Reflectivity.
                 0.0f,  // Transmissivity.

@@ -6,7 +6,6 @@
 #include <cuda_runtime.h>
 #include <optix.h>
 #include <sutil/vec_math.h>
-#include <lib/geometry.h>
 #include <SoltraceState.h>
 #include <sampleConfig.h>
 #include <optix.h>
@@ -36,24 +35,20 @@ public:
 
 	// populate the AABB list from the elements
     // AABB is for computing the sun plane and for buildGAS 
-	void populate_aabb_list(const std::vector<std::shared_ptr<Element>>& element_list) {}
+    void populate_aabb_list(const std::vector<std::shared_ptr<Element>>& element_list);
 
     // compute sun plane, use list of AABB and sun vector from m_state 
 	// to populate sun plane vectors in m_state 
     // TODO: need to think about who owns this, pipeline? 
     // top priority: create sun class
-    void compute_sun_plane() {
-		// update m_state usiing m_aabb_list
-    }
+    void compute_sun_plane();
 
 	// build the GAS (Geometry Acceleration Structure) using the AABB list
-    void buildGas() {
-		// update m_state gas handles, etc, using m_aabb_list
-    }
+    void create_geometries();
 
 
 private: 
-	SoltraceState m_state;
+	SoltraceState& m_state;
 
     // list of AABB vertices 
     // TODO: using OptixAABB for now, but should be changed to host side data structure later
@@ -116,7 +111,7 @@ private:
 
     std::vector<std::shared_ptr<Element>> m_element_list;
 
-    void createSBT(std::vector<GeometryData::Rectangle_Parabolic>& helistat_list, std::vector<GeometryData::Parallelogram> receiver_list);
+    void createSBT();
 
 
 

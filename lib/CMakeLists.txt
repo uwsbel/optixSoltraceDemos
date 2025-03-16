@@ -1,6 +1,6 @@
 # Add the geometry implementation
 add_library(geometry STATIC
-    geometry.cpp
+    geometryManager.cpp
     dataManager.cpp
     pipelineManager.cpp
     SolTrSystem.cpp
