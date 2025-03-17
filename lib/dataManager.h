@@ -11,6 +11,7 @@ using namespace soltrace;
 
 class dataManager {
 public:
+    // TODO: move this to private member for best practice 
     // Host copy of launch parameters.
     soltrace::LaunchParams host_launch_params;
     // Device pointer to launch parameters.
@@ -18,6 +19,8 @@ public:
 
     dataManager();
     ~dataManager();
+
+    void cleanup();
 
     soltrace::LaunchParams* getDeviceLaunchParams() const;
 

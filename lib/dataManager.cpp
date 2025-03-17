@@ -26,10 +26,7 @@ dataManager::dataManager() : device_launch_params(nullptr) {
 }
 
 dataManager::~dataManager() {
-    if (device_launch_params) {
-        CUDA_CHECK(cudaFree(reinterpret_cast<void*>(device_launch_params)));
-        device_launch_params = nullptr;
-    }
+	cleanup(); 
 }
 
 
@@ -42,4 +39,11 @@ void dataManager::allocateLaunchParams() {
 
 void dataManager::updateLaunchParams() {
     CUDA_CHECK(cudaMemcpy(device_launch_params, &host_launch_params, sizeof(LaunchParams), cudaMemcpyHostToDevice));
+}
+
+void dataManager::cleanup() {
+    if (device_launch_params) {
+        CUDA_CHECK(cudaFree(device_launch_params));
+        device_launch_params = nullptr;
+    }
 }

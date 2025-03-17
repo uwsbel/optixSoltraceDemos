@@ -10,13 +10,14 @@
 #include <Element.h>
 
 
+// TODO: optix related type should go into one header file
 typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
 
 SolTrSystem::SolTrSystem(int numSunPoints)
     : m_num_sunpoints(numSunPoints)
 {
-
-    // TODO: Need to attach state to it
+    m_verbose = false;
+    // TODO: think about m_state again, attach or not attach
     geometry_manager = std::make_shared<geometryManager>(m_state);
     data_manager = std::make_shared<dataManager>();
 
@@ -35,7 +36,7 @@ SolTrSystem::SolTrSystem(int numSunPoints)
 }
 
 SolTrSystem::~SolTrSystem() {
-    cleanup();
+    //cleanup();
 }
 
 void SolTrSystem::initialize() {
@@ -197,10 +198,35 @@ void SolTrSystem::writeOutput(const std::string& filename) {
 
 
 void SolTrSystem::cleanup() {
-    // Cleanup pipeline_manager resources via its destructor.
+
+
+    CUDA_CHECK(cudaDeviceSynchronize());
+    // destroy pipeline related resources
+	pipeline_manager->cleanup();
+
+    // destory CUDA stream
+	if (m_state.stream) {
+		CUDA_CHECK(cudaStreamDestroy(m_state.stream));
+	}
+
     OPTIX_CHECK(optixDeviceContextDestroy(m_state.context));
-    // data_manager cleanup is handled in its destructor.
-    // geometry_manager cleanup can be added when implemented.
+
+
+    // Free OptiX shader binding table (SBT) memory
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.sbt.raygenRecord)));
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.sbt.missRecordBase)));
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.sbt.hitgroupRecordBase)));
+
+    // Free OptiX GAS output buffer
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.d_gas_output_buffer)));
+
+    // Free device-side launch parameter memory
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.params.hit_point_buffer)));
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.d_params)));
+
+    data_manager->cleanup();
+
+
 }
 
 // Create and configure the Shader Binding Table (SBT).
@@ -276,8 +302,8 @@ void SolTrSystem::createSBT(){
         // TODO: Material params - arbitrary right now
         // TODO: separate number of heliostats and receivers 
 
-        int num_heliostats = 1;
-		int num_receivers = 1;
+		int num_heliostats = m_element_list.size() - 1; // Assuming the last element is the receiver
+        int num_receivers = 1;
 
         for (int i = 0; i < num_heliostats; i++) {
 

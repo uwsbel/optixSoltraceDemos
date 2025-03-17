@@ -33,11 +33,4 @@ struct SoltraceState
     soltrace::LaunchParams*     d_params                        = nullptr;
 
     OptixShaderBindingTable     sbt                             = {};
-
-    // TODO: list of geometries - add geometries first and then iterate through list to create SBT
-
-    // possible items to go into state
-    // list of geometries and its type 
-    // list of heliostats/receiver pointers 
-	// num of heliostats/receivers
 };

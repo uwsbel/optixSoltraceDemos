@@ -41,16 +41,23 @@ pipelineManager::pipelineManager(SoltraceState& state) : m_state(state) {}
 
 
 pipelineManager::~pipelineManager() {
-    //OPTIX_CHECK(optixProgramGroupDestroy(m_state.m_raygen_prog_group));
-    //OPTIX_CHECK(optixProgramGroupDestroy(m_radiance_mirror_prog_group));
-    //OPTIX_CHECK(optixProgramGroupDestroy(m_radiance_receiver_prog_group));
-    //OPTIX_CHECK(optixProgramGroupDestroy(m_radiance_miss_prog_group));
+	//cleanup();
+}
 
-    //OPTIX_CHECK(optixModuleDestroy(m_geometry_module));
-    //OPTIX_CHECK(optixModuleDestroy(m_shading_module));
-    //OPTIX_CHECK(optixModuleDestroy(m_sun_module));
+void pipelineManager::cleanup() {
 
-    //OPTIX_CHECK(optixPipelineDestroy(m_pipeline));
+    OPTIX_CHECK(optixPipelineDestroy(m_state.pipeline));
+
+    // destroy all program groups 
+    for (auto& prog_group : m_program_groups) {
+		std::cout << "program group size " << m_program_groups.size() << std::endl;
+        OPTIX_CHECK(optixProgramGroupDestroy(prog_group));
+    }
+
+    OPTIX_CHECK(optixModuleDestroy(m_state.geometry_module));
+    OPTIX_CHECK(optixModuleDestroy(m_state.shading_module));
+    OPTIX_CHECK(optixModuleDestroy(m_state.sun_module));
+
 }
 
 std::string pipelineManager::loadPtxFromFile(const std::string& kernelName) {

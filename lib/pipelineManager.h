@@ -12,6 +12,7 @@ class pipelineManager {
 public:
     pipelineManager(SoltraceState& state);
     ~pipelineManager();
+    void cleanup();
 
     std::string loadPtxFromFile(const std::string& kernelName);
     void loadModules();
@@ -49,7 +50,7 @@ private:
     // possible members ... 
     // index for the program groups 
     // TODO: this is hardcoded for now .... 
-    // need to think about what to do with this 
+	// should initialize them in the constructor
 	int num_raygen_programs = 1;
     int num_heliostat_programs = 2;
     int num_receiver_programs = 2; 
