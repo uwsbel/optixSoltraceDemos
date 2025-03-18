@@ -40,7 +40,7 @@ void printFloat3(const char* label, const float3& vec) {
 // Load ptx given shader strings 
 std::string loadPtxFromFile(const std::string& kernel_name) {
     // Construct the full PTX file path based on the kernel name
-    const std::string ptx_file = std::string(SAMPLES_PTX_DIR) + "demo_large_scene_generated_" + kernel_name + ".cu.ptx";
+    const std::string ptx_file = std::string(SAMPLES_PTX_DIR) + "demo_three_heliostats_generated_" + kernel_name + ".cu.ptx";
 
     std::cout << "PTX file name: " << ptx_file << "\n";
     // Read the PTX file into a string
@@ -616,7 +616,7 @@ int main(int argc, char* argv[])
     {
         state.params.sun_vector = make_float3(0.0f, 0.0f, 100.0f);
         state.params.max_sun_angle = 0.00465;     // 4.65 mrad
-        state.params.num_sun_points = 10000;
+        state.params.num_sun_points = 1000000;
 
         state.params.width  = state.params.num_sun_points;
         state.params.height = 1;
@@ -669,7 +669,7 @@ int main(int argc, char* argv[])
         CUDA_CHECK(cudaMemcpy(rd_output_buffer.data(), state.params.reflected_dir_buffer, state.params.width * state.params.height * state.params.max_depth * sizeof(float4), cudaMemcpyDeviceToHost));
         */
 
-        writeVectorToCSV("toy_problem.csv", hp_output_buffer);
+        writeVectorToCSV("toy_problem_parabolic.csv", hp_output_buffer);
 
         cleanupState(state);
     }
