@@ -41,7 +41,7 @@ SolTrSystem::~SolTrSystem() {
 
 void SolTrSystem::initialize() {
 
-	float3 sun_vector = make_float3(0.0f, 1.0f, 100.0f); 
+	float3 sun_vector = make_float3(0.0f, 0.0f, 100.0f); 
     m_state.params.sun_vector = sun_vector;
     m_state.params.max_sun_angle = 0.00465;     // 4.65 mrad
 
