@@ -293,11 +293,12 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     // two edge vectors. The stored rect.v1 and rect.v2 are the reciprocals:
     //     stored_v1 = original_v1 / dot(original_v1, original_v1)
     // Thus, the original edge lengths are:
+    // Note rect.v1 had the size of 1/original_v1_length
     float L1 = 1.0f / length(rect.v1);
     float L2 = 1.0f / length(rect.v2);
     // And the unit edge directions are:
-    float3 e1 = rect.v1 * L1; // recovers the original direction of edge 1
-    float3 e2 = rect.v2 * L2; // recovers the original direction of edge 2
+    float3 e1 = rect.v1 * L1; // recovers the original direction of edge 1, unit vector
+    float3 e2 = rect.v2 * L2; // recovers the original direction of edge 2, unit ve
     // The flat (undeformed) rectangle’s normal is:
     float3 n = normalize(cross(e2, e1));
 
@@ -309,7 +310,10 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     //   - The y-axis is e2.
     //   - The z-axis is n.
     //
-    float3 d = ray_orig - rect.anchor;
+    // Compute the rectangle center (shifting from the lower-right corner)
+    float3 rect_center = rect.anchor + (L1 / 2.0f) * e1 + (L2 / 2.0f) * e2;
+
+    float3 d = ray_orig - rect_center;
     float ox = dot(d, e1);
     float oy = dot(d, e2);
     float oz = dot(d, n);
@@ -368,11 +372,11 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     //
     // Check if the hit is within the rectangle’s flat bounds.
     // The parametric coordinates are:
-    //    a1 = x_hit / L1   and   a2 = y_hit / L2
+    //    a1 = x_hit / (L1/2)   and   a2 = y_hit / (L2/2)
     //
-    float a1 = x_hit / L1;
-    float a2 = y_hit / L2;
-    if (a1 < 0.0f || a1 > 1.0f || a2 < 0.0f || a2 > 1.0f) {
+    float a1 = x_hit / (L1/2.);
+    float a2 = y_hit / (L2/2.);
+    if (a1 < -1.0f || a1 > 1.0f || a2 < -1.0f || a2 > 1.0f) {
         return;
     }
 
