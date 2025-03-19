@@ -5,8 +5,12 @@
 #include "Vector3d.h"
 
 
-
-// base class for all surfaces
+/**
+ * @class Surface
+ * @brief Define surface of an element 
+ *
+ * Base class for different types of surfaces (flat, parabolic, spherical, etc.).
+ */
 class Surface {
 public:
     Surface() = default;
@@ -23,7 +27,14 @@ public:
 };
 
 
-// Parabolic surface with two curvature parameters
+
+/**
+ * @class SurfaceParabolic
+ * @brief Define parabolic surface of an element 
+ *
+ * Parabolic surface defined by two curvature parameters (c1 and c2)
+ * local coordinate origin is at the origin of the element
+ */
 class SurfaceParabolic : public Surface {
 public:
     SurfaceParabolic() : m_c1(0.0), m_c2(0.0) {}
@@ -53,7 +64,7 @@ private:
 };
 
 
-// flat surface 
+/// flat surface 
 class SurfaceFlat : public Surface {
 public:
     SurfaceFlat() = default;

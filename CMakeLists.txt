@@ -472,12 +472,15 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
   CUDA_WRAP_SRCS( ${target_name} OBJ generated_files ${cu_obj_source_files} ${cmake_options} OPTIONS ${options} )
 
   # Create the rules to build the PTX and/or OPTIX files.
+  # Luning TODO: ptx.cu only need to get generated once. move this out of the loop. 
   if( SAMPLES_INPUT_GENERATE_OPTIXIR )
     CUDA_WRAP_SRCS( ${target_name} OPTIXIR generated_files2 ${cu_optix_source_files} ${cmake_options} OPTIONS ${options} )
     list(APPEND generated_files ${generated_files2})
   endif()
   if( SAMPLES_INPUT_GENERATE_PTX AND NOT CUDA_NVRTC_ENABLED)
-    CUDA_WRAP_SRCS( ${target_name} PTX generated_files3 ${cu_optix_source_files} ${cmake_options} OPTIONS ${options} )
+    # CUDA_WRAP_SRCS( ${target_name} PTX generated_files3 ${cu_optix_source_files} ${cmake_options} OPTIONS ${options} )
+    CUDA_WRAP_SRCS( "" PTX generated_files3 ${cu_optix_source_files} ${cmake_options} OPTIONS ${options} )
+
     list(APPEND generated_files ${generated_files3})
   endif()
 

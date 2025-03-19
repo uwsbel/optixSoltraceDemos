@@ -27,74 +27,96 @@
 
 using namespace soltrace;
 
-
+/**
+ * @class geometryManager
+ * @brief Given the geoemtry of the elements, populate the list of aabb, 
+ * compute the sun plane, and build the GAS (Geometry Acceleration Structure) for ray tracing.
+ */
 class geometryManager {
 public:
 	geometryManager(SoltraceState& state) : m_state(state) {}
     ~geometryManager() {} 
 
-	// populate the AABB list from the elements
-    // AABB is for computing the sun plane and for buildGAS 
+	/// populate the AABB list from the elements
     void populate_aabb_list(const std::vector<std::shared_ptr<Element>>& element_list);
 
-    // compute sun plane, use list of AABB and sun vector from m_state 
-	// to populate sun plane vectors in m_state 
+    /// compute the sun plane with sun vector and a list of AABBs 
     // TODO: need to think about who owns this, pipeline? 
-    // top priority: create sun class
+    // TODO: create sun class
     void compute_sun_plane();
 
-	// build the GAS (Geometry Acceleration Structure) using the AABB list
+	/// build the GAS (Geometry Acceleration Structure) using the AABB list, populate optix state
     void create_geometries();
 
 
 private: 
 	SoltraceState& m_state;
 
-    // list of AABB vertices 
+    /// list of AABB vertices 
     // TODO: using OptixAABB for now, but should be changed to host side data structure later
 	std::vector<OptixAabb> m_aabb_list;
 };
 
-//Interface to soltrace simulation system
-//wrapper around scene setup, pipeline, ray trace sim, post process, etc
-//hardward agnostic, can be extended for vulkan 
+/**
+ * @class SolTrSystem
+ * @brief Main simulation object to: 
+ * - build the scene from the elements (heliostats and receiver)
+ * - set sun vector and sun points
+ * - manage the ray tracing pipeline and data transfer between the host and device
+ * - run ray tracing simulation 
+ * - and output results
+ */
 class SolTrSystem {
 public:
     SolTrSystem(int numSunPoints);
     ~SolTrSystem();
 
-    // add element
-    // void addElement(Element e);
-
-    // Call to this function mark the completion of the simulation setup
+    /// Call to this function mark the completion of the simulation setup
     void initialize();
 
-    // Execute the ray tracing simulation
+    /// Execute the ray tracing simulation
     void run();
 
     // Write the output to a file.
     void writeOutput(const std::string& filename); 
 
-    // Explicit cleanup, also invoked in the destructor.
+    /// Explicit cleanup
     void cleanup();
 
-    // set methods 
+    /// set methods 
 	void setVerbose(bool verbose);
-
+	/// <summary>
+	/// set the number of rays launched
+	/// </summary>
+	/// <param name="numSunPoints"></param>
 	void setSunPoints(int numSunPoints);
 
+	/// <summary>
+	/// set the sun vector
+	/// </summary>
+	/// <param name="sunVector"></param>
 	void setSunVector(float3 sunVector);
 
-    // get methods 
+	/// <summary>
+	/// compute number of heliostat elements added to the system 
+	/// </summary>
+	/// <returns></returns>
 	int get_num_heliostats() const
 	{
 		return m_element_list.size() - 1; // Return the number of heliostats (elements) added
 	}
 
+    /// <summary>
+    /// compute number of receiver elements added to the system
+    /// </summary>
+    /// <returns></returns>
     int get_num_receivers() const {
 		return 1; // Assuming one receiver for now, can be modified later
     }
 
+	/// <summary>
+	/// add element
+	/// /// </summary>
     void AddElement(std::shared_ptr<Element> element);
 
 

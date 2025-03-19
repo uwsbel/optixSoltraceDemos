@@ -61,7 +61,7 @@ void pipelineManager::cleanup() {
 }
 
 std::string pipelineManager::loadPtxFromFile(const std::string& kernelName) {
-    std::string ptxFile = std::string(SAMPLES_PTX_DIR) + "demo_refactor_generated_" + kernelName + ".cu.ptx";
+    std::string ptxFile = std::string(SAMPLES_PTX_DIR) + "_generated_" + kernelName + ".cu.ptx";
     std::ifstream file(ptxFile);
     if (!file.good())
         throw std::runtime_error("PTX file not found: " + ptxFile);
