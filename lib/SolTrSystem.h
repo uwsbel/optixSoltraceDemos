@@ -83,19 +83,21 @@ public:
     /// Explicit cleanup
     void cleanup();
 
-    /// set methods 
-	void setVerbose(bool verbose);
+	void setVerbose(bool verbose) { m_verbose = verbose; } // Set verbosity for debugging
 	/// <summary>
 	/// set the number of rays launched
 	/// </summary>
 	/// <param name="numSunPoints"></param>
-	void setSunPoints(int numSunPoints);
+	void setSunPoints(int num) { m_num_sunpoints = num; } 
 
 	/// <summary>
-	/// set the sun vector
+	/// set normalized sun vector
 	/// </summary>
 	/// <param name="sunVector"></param>
-	void setSunVector(float3 sunVector);
+	void setSunVector(Vector3d vect) { m_sun_vector = vect; } // Set the sun vector
+
+	void setSunAngle(double angle) { m_sun_angle = angle; } // Set the sun angle
+
 
 	/// <summary>
 	/// compute number of heliostat elements added to the system 
@@ -129,14 +131,13 @@ private:
     int m_num_sunpoints;
     bool m_verbose; 
 
+    Vector3d m_sun_vector;
+    double m_sun_angle;
     SoltraceState m_state;
 
     std::vector<std::shared_ptr<Element>> m_element_list;
 
     void createSBT();
-
-
-
 
 };
 

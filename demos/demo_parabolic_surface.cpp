@@ -19,6 +19,9 @@ int main(int argc, char* argv[]) {
     // Create the simulation system instance.
     SolTrSystem system(num_rays);
 
+	Vector3d sun_vector(0, 0, 1.); // sun vector
+	system.setSunVector(sun_vector); // Set the sun vector
+
     double curv_x = 0.05;
     double curv_y = 0.05;
 
@@ -60,10 +63,6 @@ int main(int argc, char* argv[]) {
     auto aperture = std::make_shared<ApertureRectangle>(dim_x, dim_y);
     e1->set_aperture(aperture);
 	system.AddElement(e1); // Add the element to the system
-
-
-
-
 
     ///////////////////////////////////
     // Add receiver the last for now //

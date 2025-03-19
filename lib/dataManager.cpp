@@ -10,7 +10,7 @@
 
 dataManager::dataManager() : device_launch_params(nullptr) { 
 	
-    // Initialize launch parameters
+    // Initialize launch parameters with default values
     host_launch_params.width = 10;
 	host_launch_params.height = 1;
 	host_launch_params.max_depth = 5;

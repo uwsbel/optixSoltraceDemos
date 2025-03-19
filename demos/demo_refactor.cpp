@@ -75,6 +75,14 @@ int main(int argc, char* argv[]) {
     ///////////////////////////////////////////
     system.AddElement(e2); // Add the receiver to the system
 
+    // set up sun vector and angle 
+	Vector3d sun_vector(0.0, 0.0, 10.0); // sun vector
+	double sun_angle = 0.0; // sun angle
+
+	system.setSunVector(sun_vector);
+	system.setSunAngle(sun_angle);
+
+
     ///////////////////////////////////
     // STEP 3  Initialize the system //
     ///////////////////////////////////
@@ -83,6 +91,7 @@ int main(int argc, char* argv[]) {
     ////////////////////////////
     // STEP 4  Run Ray Trace //
     ///////////////////////////
+    // TODO: set up different sun position trace // 
     system.run();
 
     //////////////////////////

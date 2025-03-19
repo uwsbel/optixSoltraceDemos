@@ -41,12 +41,14 @@ SolTrSystem::~SolTrSystem() {
 
 void SolTrSystem::initialize() {
 
-	float3 sun_vector = make_float3(0.0f, 0.0f, 100.0f); 
-    m_state.params.sun_vector = sun_vector;
+	Vector3d sun_vec = m_sun_vector.normalized(); // normalize the sun vector
+
+    // initialize soltrace state variable 
+    m_state.params.sun_vector = make_float3(sun_vec[0], sun_vec[1], sun_vec[2]);
     m_state.params.max_sun_angle = 0.00465;     // 4.65 mrad
 
     // set up input related to sun
-    data_manager->host_launch_params.sun_vector = sun_vector;
+    data_manager->host_launch_params.sun_vector = m_state.params.sun_vector;
     data_manager->host_launch_params.max_sun_angle = 0.00465;     // 4.65 mrad
 
 
