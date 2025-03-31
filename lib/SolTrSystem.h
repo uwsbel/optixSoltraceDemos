@@ -77,6 +77,9 @@ public:
     /// Execute the ray tracing simulation
     void run();
 
+    // Read a stinput file for the simulation setup.
+    bool readStinput(const char* filename);
+
     // Write the output to a file.
     void writeOutput(const std::string& filename); 
 
@@ -138,6 +141,16 @@ private:
     std::vector<std::shared_ptr<Element>> m_element_list;
 
     void createSBT();
+
+    // Helper functions to read a stinput file
+    bool read_system(FILE* fp);
+    bool read_stage(FILE* fp);
+    bool read_element(FILE* fp);
+    bool read_optic(FILE* fp); 
+    bool read_optic_surface(FILE* fp);
+    bool read_sun(FILE* fp);
+    void read_line(char* buf, int len, FILE* fp);
+    std::vector<std::string> split(const std::string& str, const std::string& delim, bool ret_empty, bool ret_delim);
 
 };
 
