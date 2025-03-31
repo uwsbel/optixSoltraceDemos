@@ -76,4 +76,36 @@ public:
 
 };
 
+/// cylindrical surface (with caps)
+class SurfaceCylinder : public Surface {
+public:
+    SurfaceCylinder() = default;
+    virtual ~SurfaceCylinder() = default;
+
+    SurfaceType get_surface_type() const override {
+        return SurfaceType::CYLINDER;
+    }
+
+    void set_radius(double radius) {
+        m_radius = radius;
+    }
+
+    double get_radius() const {
+        return m_radius;
+    }
+
+    void set_half_height(double half_height) {
+        m_half_height = half_height;
+    }
+
+    double get_half_height() const {
+        return m_half_height;
+    }
+
+private:
+    double m_radius;
+    double m_half_height;
+};
+
+
 #endif // SOLTRACE_SURFACE_H

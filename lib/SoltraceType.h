@@ -11,7 +11,8 @@ enum class ApertureType {
 enum class SurfaceType {
 	FLAT,
 	PARABOLIC,
-	MESH
+	MESH,
+	CYLINDER
 };
 
 // mapping of the surface type combined with the aperture type

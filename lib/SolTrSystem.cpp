@@ -333,12 +333,13 @@ void SolTrSystem::createSBT(){
 
         // TODO: perform the same way 
         for (int i = num_heliostats; i < m_element_list.size(); i++) {
-			auto element = m_element_list.at(i);
+            auto element = m_element_list.at(i);
             // Configure Receiver SBT record.
+            SurfaceType surface_type = element->get_surface_type();
             OPTIX_CHECK(optixSbtRecordPackHeader(
-                m_state.radiance_receiver_prog_group,
+                pipeline_manager->getReceiverProgram(surface_type),
                 &hitgroup_records_list[sbt_idx]));
-			hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
+            hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
             hitgroup_records_list[sbt_idx].data.material_data.receiver = {
                 0.95f, // Reflectivity.
                 0.0f,  // Transmissivity.
