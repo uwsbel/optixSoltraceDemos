@@ -44,7 +44,7 @@ public:
 
 	// or initialize with x and y dimensions
 	ApertureRectangle(double xDim, double yDim) : x_dim(xDim), y_dim(yDim) {
-		m_anchor = make_float3(-xDim / 2.0, -yDim / 2.0, 0.0); // anchor at the center of the rectangle
+		m_anchor = make_float3(-xDim / 2.0f, -yDim / 2.0f, 0.0f); // anchor at the center of the rectangle
 		m_v1 = make_float3(x_dim, 0.0f, 0.0f);   // width vector
 		m_v2 = make_float3(0.0f, y_dim, 0.0f);   // height vector
     
