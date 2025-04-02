@@ -15,7 +15,7 @@ const unsigned int MAX_TRACE_DEPTH      = 5u;
     
 struct HitGroupData
 {
-    GeometryData geometry_data;
+    GeometryDataST geometry_data;
     MaterialData material_data;
 };
 

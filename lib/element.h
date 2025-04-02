@@ -11,6 +11,8 @@
 #include "lib/mathUtil.h"
 #include "cuda/GeometryDataST.h"
 
+class Aperture;
+
 // Ask John, why element needs a base? difference between ElementBase and Element?
 class ElementBase {
 public:
@@ -30,7 +32,7 @@ public:
     //virtual const Vector3d& get_lower_bounding_box() const = 0;
 
 
-	virtual GeometryData toDeviceGeometryData() const = 0;
+	virtual GeometryDataST toDeviceGeometryData() const = 0;
 
 protected:
     // Derived classes must implement bounding box computation.
@@ -41,14 +43,12 @@ protected:
 class Element : public ElementBase {
 public:
     Element() {
-
-		m_origin = Vector3d(0.0, 0.0, 0.0);
-		m_aim_point = Vector3d(0.0, 0.0, 1.0); // Default aim direction
-		m_euler_angles = Vector3d(0.0, 0.0, 0.0); // Default orientation
+        m_origin = Vector3d(0.0, 0.0, 0.0);
+        m_aim_point = Vector3d(0.0, 0.0, 1.0); // Default aim direction
+        m_euler_angles = Vector3d(0.0, 0.0, 0.0); // Default orientation
         m_zrot = 0.0;    
-		m_surface = nullptr;
-		m_aperture = nullptr;
-
+        m_surface = nullptr;
+        m_aperture = nullptr;
     }
     ~Element() {}
 
@@ -126,46 +126,117 @@ public:
         m_zrot = zrot;
         update_euler_angles();
     }
+    // return L2G rotation matrix
+    Matrix33d get_rotation_matrix() const {
+        // get G2L rotation matrix from euler angles 
+        // TODO: need to think about if we store this or not
+        Matrix33d mat_G2L = mathUtil::get_rotation_matrix_G2L(m_euler_angles);
+        return mat_G2L.transpose();
+    }
 
-	GeometryData toDeviceGeometryData() const
+
+    // return upper bounding box
+	Vector3d get_upper_bounding_box() const {
+		return m_upper_box_bound;
+	}
+
+	// return lower bounding box
+	Vector3d get_lower_bounding_box() const {
+		return m_lower_box_bound;
+	}
+
+
+	GeometryDataST toDeviceGeometryData() const override
 	{
-        // get center 
-        Vector3d center = m_origin;
+        GeometryDataST geometry_data;
 
-		// get aim point
-		Vector3d aim = m_aim_point;
+        SurfaceType surface_type = m_surface->get_surface_type();
+        ApertureType aperture_type = m_aperture->get_aperture_type();
 
-		// get surface and aperture
-		GeometryData geometry_data;
+        if (aperture_type == ApertureType::RECTANGLE) {
+            m_aperture->compute_device_aperture(m_origin, m_aim_point);
 
-		SurfaceType surface_type = m_surface->get_surface_type();
-		ApertureType aperture_type = m_aperture->get_aperture_type();
+            float3 anchor = m_aperture->get_anchor();
+            float3 v1 = m_aperture->get_v1();
+            float3 v2 = m_aperture->get_v2();
 
-		if (aperture_type == ApertureType::RECTANGLE) {
-			m_aperture->compute_device_aperture(m_origin, m_aim_point); // Compute the device aperture based on the origin and aim point
+            if (surface_type == SurfaceType::FLAT) {
+                GeometryDataST::Rectangle_Flat heliostat(anchor, v1, v2, 
+                    sqrtf(dot(v1, v1)), sqrtf(dot(v2, v2)));
+                geometry_data.setRectangle_Flat(heliostat);
 
-			float3 anchor = m_aperture->get_anchor(); // anchor point
-			float3 v1 = m_aperture->get_v1();
-			float3 v2 = m_aperture->get_v2();
-
-            // rectangle flat
-			if (surface_type == SurfaceType::FLAT) {
-				// cast to GeometryData::Parallelogram Type
-				GeometryData::Parallelogram heliostat(v1, v2, anchor);
-				geometry_data.setParallelogram(heliostat);
             }
 
             if (surface_type == SurfaceType::PARABOLIC) {
-				// create GeometryData::Rectangle_Parabolic 
-                GeometryData::Rectangle_Parabolic heliostat(v1, v2, anchor, 
-                                                            m_surface->get_curvature_1(),
-                                                            m_surface->get_curvature_2());
-				geometry_data.setRectangleParabolic(heliostat);
+                GeometryDataST::Rectangle_Parabolic heliostat(v1, v2, anchor, 
+                    (float)m_surface->get_curvature_1(),
+                    (float)m_surface->get_curvature_2());
+                geometry_data.setRectangleParabolic(heliostat);
             }
-		}
-        return geometry_data;
+        }
         
+        
+        
+        if (aperture_type == ApertureType::EASY_RECTANGLE) {
+            m_aperture->compute_device_aperture(m_origin, m_aim_point);
+
+            float3 anchor = m_aperture->get_anchor();
+            float3 v1 = m_aperture->get_v1();
+            float3 v2 = m_aperture->get_v2();
+            double width = m_aperture->get_width();
+            double height = m_aperture->get_height();
+
+            GeometryDataST::Rectangle_Flat heliostat(anchor, v1, v2, width, height);
+            geometry_data.setRectangle_Flat(heliostat);
+
+        }
+        
+        return geometry_data;
 	}
+
+
+    // we also need to implement the bounding box computation
+    // for a case like a rectangle aperture,
+    // once we have the origin, euler angles, rotatioin matrix
+    // and the aperture size, we can compute the bounding box
+    // this can be called when adding an element to the system
+    void compute_bounding_box(){
+        // this can also be called while "initializing" the element
+        // get the rotation matrix first
+        Matrix33d rotation_matrix = get_rotation_matrix();  // L2G rotation matrix
+
+        // now check the type of the aperture
+        ApertureType aperture_type = m_aperture->get_aperture_type();
+
+        if (aperture_type == ApertureType::EASY_RECTANGLE) {
+            // get the width and height of the aperture
+            double width = m_aperture->get_width();
+            double height = m_aperture->get_height();
+
+            // compute the four corners of the rectangle locally
+            Vector3d corner1 = Vector3d(-width/2, -height/2, 0.0);
+            Vector3d corner2 = Vector3d( width/2, -height/2, 0.0);
+            Vector3d corner3 = Vector3d( width/2,  height/2, 0.0);
+            Vector3d corner4 = Vector3d(-width/2,  height/2, 0.0);
+
+            // transform the corners to the global frame
+            Vector3d corner1_global = rotation_matrix * corner1;
+            Vector3d corner2_global = rotation_matrix * corner2;
+            Vector3d corner3_global = rotation_matrix * corner3;
+            Vector3d corner4_global = rotation_matrix * corner4;
+
+            // now update the bounding box, need to find the min and max x, y, z
+            m_lower_box_bound[0] = fmin(fmin(corner1_global[0], corner2_global[0]), fmin(corner3_global[0], corner4_global[0]));
+            m_lower_box_bound[1] = fmin(fmin(corner1_global[1], corner2_global[1]), fmin(corner3_global[1], corner4_global[1]));
+            m_lower_box_bound[2] = fmin(fmin(corner1_global[2], corner2_global[2]), fmin(corner3_global[2], corner4_global[2]));
+
+            m_upper_box_bound[0] = fmax(fmax(corner1_global[0], corner2_global[0]), fmax(corner3_global[0], corner4_global[0]));
+            m_upper_box_bound[1] = fmax(fmax(corner1_global[1], corner2_global[1]), fmax(corner3_global[1], corner4_global[1]));
+            m_upper_box_bound[2] = fmax(fmax(corner1_global[2], corner2_global[2]), fmax(corner3_global[2], corner4_global[2]));
+            
+    }
+}
+
 
 private:
     Vector3d m_origin;

@@ -3,6 +3,7 @@
 #include <cmath>
 #include <optix.h>
 #include <vector_types.h>
+#include <vector_functions.h>
 #include "Vector3d.h"
 
 #ifndef M_PI
@@ -10,29 +11,6 @@
 #endif
 
 namespace mathUtil {
-
-/**
- * Conversion utilities between float3 and Vector3d
- */
-inline float3 to_float3(const Vector3d& v) {
-    return make_float3(
-        static_cast<float>(v[0]),
-        static_cast<float>(v[1]),
-        static_cast<float>(v[2])
-    );
-}
-
-inline Vector3d to_vector3d(const float3& v) {
-    return Vector3d(v.x, v.y, v.z);
-}
-
-inline float3 make_float3_d(double x, double y, double z) {
-    return make_float3(
-        static_cast<float>(x),
-        static_cast<float>(y),
-        static_cast<float>(z)
-    );
-}
 
 /**
  * Convert normal vector and z-rot to Euler angles (yaw-pitch-roll)
@@ -119,4 +97,14 @@ inline Vector3d global_to_local(const Vector3d& point, const Matrix33d& matrix, 
         matrix(2,0)*translated[0] + matrix(2,1)*translated[1] + matrix(2,2)*translated[2]
     );
 }
+
+/* 
+ * convert Vector3d to float3
+ * @param v Vector3d to convert
+ * @return float3
+ */
+inline float3 toFloat3(const Vector3d& v) {
+    return make_float3(static_cast<float>(v[0]), static_cast<float>(v[1]), static_cast<float>(v[2]));
+}
+
 }

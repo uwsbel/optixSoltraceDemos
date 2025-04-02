@@ -214,6 +214,19 @@ void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
         }
 
 
+        if (element->get_aperture_type() == ApertureType::EASY_RECTANGLE) {
+
+            element->compute_bounding_box();
+			m_min.x = element->get_lower_bounding_box()[0];
+			m_min.y = element->get_lower_bounding_box()[1];
+			m_min.z = element->get_lower_bounding_box()[2];
+
+			m_max.x = element->get_upper_bounding_box()[0];
+			m_max.y = element->get_upper_bounding_box()[1];
+			m_max.z = element->get_upper_bounding_box()[2];
+        }
+
+
         aabb.minX = m_min.x;
         aabb.minY = m_min.y;
         aabb.minZ = m_min.z;

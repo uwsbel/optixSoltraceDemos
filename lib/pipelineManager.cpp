@@ -24,7 +24,8 @@ size_t LOG_SIZE = sizeof(LOG);
 
 const char* intersectionFuncs[] = {
     "__intersection__parallelogram",
-    "__intersection__rectangle_parabolic"
+    "__intersection__rectangle_parabolic",
+    "__intersection__rectangle_flat"
 };
 
 const char* closestHitFuncs[] = {
@@ -321,16 +322,26 @@ OptixProgramGroup pipelineManager::getMirrorProgram(SurfaceApertureMap map) cons
 			return m_program_groups[2];
 		}
 	}
+
+    else if (map.apertureType == ApertureType::EASY_RECTANGLE) {
+        if (map.surfaceType == SurfaceType::FLAT) {
+            std::cout << "returning mirror program group 3, easy rectangle flat" << std::endl;
+            return m_program_groups[3];
+        }
+    }
+
     else if (map.apertureType == ApertureType::CIRCLE) {
         if (map.surfaceType == SurfaceType::FLAT) {
-			std::cout << "returning mirror program group 3, circle flat" << std::endl;
+			std::cout << "returning mirror program group 4, circle flat" << std::endl;
 			return m_program_groups[3];
 		}
         else if (map.surfaceType == SurfaceType::PARABOLIC) {
-			std::cout << "returning mirror program group 4, circle parabolic" << std::endl;
+			std::cout << "returning mirror program group 5, circle parabolic" << std::endl;
 			return m_program_groups[4];
 		}
 	}
+
+
 
 }
 

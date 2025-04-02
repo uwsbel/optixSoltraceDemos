@@ -2,12 +2,15 @@
 #include <cuda/helpers.h>
 #include "Soltrace.h"
 #include <stdio.h>
+#include <optix_device.h>
+#include <sutil/vec_math.h>
+#include "GeometryDataST.h"
 
 extern "C" __global__ void __intersection__parallelogram()
 {
     // Load shader binding table (SBT) and access data specific to this hit group
     const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryData::Parallelogram& parallelogram = sbt_data->geometry_data.getParallelogram();
+    const GeometryDataST::Parallelogram& parallelogram = sbt_data->geometry_data.getParallelogram();
 
     // Get ray information: origin, direction, and min/max distances over which ray should be tested
     const float3 ray_orig = optixGetWorldRayOrigin();
@@ -38,11 +41,52 @@ extern "C" __global__ void __intersection__parallelogram()
     }
 }
 
+extern "C" __global__ void __intersection__rectangle_flat()
+{
+
+    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
+    const GeometryDataST::Rectangle_Flat& rectangle = sbt_data->geometry_data.getRectangle_Flat();
+
+    const float3 ray_orig = optixGetWorldRayOrigin();
+    const float3 ray_dir = optixGetWorldRayDirection();
+    const float ray_tmin = optixGetRayTmin();
+    const float ray_tmax = optixGetRayTmax();
+
+    // Get plane normal and distance
+    float3 n = make_float3(rectangle.plane);
+    float dt = dot(ray_dir, n);
+    
+    // Compute distance t (point of intersection) along ray direction from ray origin
+    float t = (rectangle.plane.w - dot(n, ray_orig)) / dt;
+
+    // Verify intersection distance
+    if (t > ray_tmin && t < ray_tmax)
+    {
+        // Compute intersection point
+        float3 p = ray_orig + ray_dir * t;
+        
+        // Compute vector from center to intersection point
+        float3 v = p - rectangle.center;
+        
+        // Project onto x and y to get local coordinates
+        float x = dot(rectangle.x, v);
+        float y = dot(rectangle.y, v);
+        
+        // Check if point is within rectangle bounds
+        if (x >= -rectangle.width/2 && x <= rectangle.width/2 &&
+            y >= -rectangle.height/2 && y <= rectangle.height/2)
+        {
+            // Use raw coordinates like parallelogram intersection
+            optixReportIntersection(t, 0, float3_as_args(n), __float_as_uint(x), __float_as_uint(y));
+        }
+    }
+}
+
 extern "C" __global__ void __intersection__cylinder_y()
 {
     // Load shader binding table (SBT) and access data specific to this hit group
     const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryData::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
+    const GeometryDataST::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
 
     // Get ray information: origin, direction, and min/max distances over which ray should be tested
     const float3 ray_orig = optixGetWorldRayOrigin();
@@ -134,7 +178,7 @@ extern "C" __global__ void __intersection__cylinder_y_capped()
 {
     // Load shader binding table (SBT) and access data specific to this hit group
     const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryData::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
+    const GeometryDataST::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
 
     // Get ray information: origin, direction, and min/max distances over which ray should be tested
     const float3 ray_orig = optixGetWorldRayOrigin();
@@ -278,7 +322,7 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
 {
     // Load shader binding table (SBT) data and retrieve the parabolic rectangle.
     const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryData::Rectangle_Parabolic& rect = sbt_data->geometry_data.getRectangleParabolic();
+    const GeometryDataST::Rectangle_Parabolic& rect = sbt_data->geometry_data.getRectangleParabolic();
 
     // Get ray information.
     const float3 ray_orig = optixGetWorldRayOrigin();
@@ -299,7 +343,7 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     // And the unit edge directions are:
     float3 e1 = rect.v1 * L1; // recovers the original direction of edge 1, unit vector
     float3 e2 = rect.v2 * L2; // recovers the original direction of edge 2, unit ve
-    // The flat (undeformed) rectangle’s normal is:
+    // The flat (undeformed) rectangle's normal is:
     float3 n = normalize(cross(e2, e1));
 
     //
@@ -357,7 +401,7 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
         }
     }
 
-    // Discard if no valid t or if t is not within the ray’s bounds.
+    // Discard if no valid t or if t is not within the ray's bounds.
     if (!valid || t < ray_tmin || t > ray_tmax) {
         return;
     }
@@ -370,7 +414,7 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     // (Optionally, you could compute z_hit = oz + t*dz and verify it is near f(x,y).)
 
     //
-    // Check if the hit is within the rectangle’s flat bounds.
+    // Check if the hit is within the rectangle's flat bounds.
     // The parametric coordinates are:
     //    a1 = x_hit / (L1/2)   and   a2 = y_hit / (L2/2)
     //

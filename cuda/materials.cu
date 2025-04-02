@@ -87,7 +87,7 @@ extern "C" __global__ void __closesthit__receiver()
 {
     // Retrieve the hit group data and access the parallelogram geometry
     const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryData::Parallelogram& parallelogram = sbt_data->geometry_data.getParallelogram();
+    const GeometryDataST::Parallelogram& parallelogram = sbt_data->geometry_data.getParallelogram();
 
     /*
     float3 object_normal = make_float3( __uint_as_float( optixGetAttribute_0() ), __uint_as_float( optixGetAttribute_1() ),
@@ -126,7 +126,7 @@ extern "C" __global__ void __closesthit__receiver__cylinder__y()
 {
     // Retrieve the hit group data and access the parallelogram geometry
     const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryData::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
+    const GeometryDataST::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
 
     /*
     float3 object_normal = make_float3( __uint_as_float( optixGetAttribute_0() ), __uint_as_float( optixGetAttribute_1() ),
@@ -193,7 +193,7 @@ extern "C" __global__ void __closesthit__mirror__parabolic()
     // Compute the hit point.
     const float3 hit_point = ray_orig + ray_t * ray_dir;
 
-    // Retrieve per–ray payload.
+    // Retrieve perï¿½ray payload.
     soltrace::PerRayData prd = getPayload();
     const int new_depth = prd.depth + 1; // Increase recursion depth.
 
