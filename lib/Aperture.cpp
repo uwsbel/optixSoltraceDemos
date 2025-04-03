@@ -7,6 +7,8 @@
 #include <iostream>
 #include <cmath>
 
+class Element;
+
 // Aperture base class implementations
 Aperture::Aperture() = default;
 

@@ -8,7 +8,7 @@
 #include "SoltraceType.h"
 #include "Surface.h"
 #include "Aperture.h"
-#include "lib/mathUtil.h"
+#include "mathUtil.h"
 #include "cuda/GeometryDataST.h"
 
 class Aperture;
@@ -137,11 +137,13 @@ public:
 
     // return upper bounding box
 	Vector3d get_upper_bounding_box() const {
+        printf("upper bounding box: %f, %f, %f\n", m_upper_box_bound[0], m_upper_box_bound[1], m_upper_box_bound[2]);
 		return m_upper_box_bound;
 	}
 
 	// return lower bounding box
 	Vector3d get_lower_bounding_box() const {
+        printf("lower bounding box: %f, %f, %f\n", m_lower_box_bound[0], m_lower_box_bound[1], m_lower_box_bound[2]);
 		return m_lower_box_bound;
 	}
 
@@ -161,9 +163,8 @@ public:
             float3 v2 = m_aperture->get_v2();
 
             if (surface_type == SurfaceType::FLAT) {
-                GeometryDataST::Rectangle_Flat heliostat(anchor, v1, v2, 
-                    sqrtf(dot(v1, v1)), sqrtf(dot(v2, v2)));
-                geometry_data.setRectangle_Flat(heliostat);
+                GeometryDataST::Parallelogram heliostat(v1, v2, anchor);
+				geometry_data.setParallelogram(heliostat);
 
             }
 
@@ -178,15 +179,19 @@ public:
         
         
         if (aperture_type == ApertureType::EASY_RECTANGLE) {
-            m_aperture->compute_device_aperture(m_origin, m_aim_point);
-
-            float3 anchor = m_aperture->get_anchor();
-            float3 v1 = m_aperture->get_v1();
-            float3 v2 = m_aperture->get_v2();
+            
             double width = m_aperture->get_width();
             double height = m_aperture->get_height();
 
-            GeometryDataST::Rectangle_Flat heliostat(anchor, v1, v2, width, height);
+			Matrix33d rotation_matrix = get_rotation_matrix();  // L2G rotation matrix
+
+            Vector3d v1 = rotation_matrix.get_x_basis();
+			Vector3d v2 = rotation_matrix.get_y_basis();
+            
+			std::cout << "x basis of heliostat : " << v1[0] << ", " << v1[1] << ", " << v1[2] << std::endl;
+			std::cout << "y basis of heliostat : " << v2[0] << ", " << v2[1] << ", " << v2[2] << std::endl;
+
+            GeometryDataST::Rectangle_Flat heliostat(mathUtil::toFloat3(m_origin), mathUtil::toFloat3(v1), mathUtil::toFloat3(v2), (float)width, (float)height);
             geometry_data.setRectangle_Flat(heliostat);
 
         }
@@ -220,10 +225,10 @@ public:
             Vector3d corner4 = Vector3d(-width/2,  height/2, 0.0);
 
             // transform the corners to the global frame
-            Vector3d corner1_global = rotation_matrix * corner1;
-            Vector3d corner2_global = rotation_matrix * corner2;
-            Vector3d corner3_global = rotation_matrix * corner3;
-            Vector3d corner4_global = rotation_matrix * corner4;
+            Vector3d corner1_global = rotation_matrix * corner1 + m_origin;
+            Vector3d corner2_global = rotation_matrix * corner2 + m_origin;
+            Vector3d corner3_global = rotation_matrix * corner3 + m_origin;
+            Vector3d corner4_global = rotation_matrix * corner4 + m_origin;
 
             // now update the bounding box, need to find the min and max x, y, z
             m_lower_box_bound[0] = fmin(fmin(corner1_global[0], corner2_global[0]), fmin(corner3_global[0], corner4_global[0]));
@@ -233,6 +238,8 @@ public:
             m_upper_box_bound[0] = fmax(fmax(corner1_global[0], corner2_global[0]), fmax(corner3_global[0], corner4_global[0]));
             m_upper_box_bound[1] = fmax(fmax(corner1_global[1], corner2_global[1]), fmax(corner3_global[1], corner4_global[1]));
             m_upper_box_bound[2] = fmax(fmax(corner1_global[2], corner2_global[2]), fmax(corner3_global[2], corner4_global[2]));
+
+            
             
     }
 }

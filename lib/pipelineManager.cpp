@@ -30,7 +30,8 @@ const char* intersectionFuncs[] = {
 
 const char* closestHitFuncs[] = {
     "__closesthit__mirror",
-    "__closesthit__mirror__parabolic"
+    "__closesthit__mirror__parabolic",
+	"__closesthit__mirror"
 };
 
 const char* closestHitReceiverFuncs[] = {
@@ -350,7 +351,10 @@ OptixProgramGroup pipelineManager::getReceiverProgram(SurfaceType surfaceType) c
     // First receiver (flat) is at index num_raygen_programs + num_heliostat_programs
     // Second receiver (cylinder) is at index num_raygen_programs + num_heliostat_programs + 1
     if (surfaceType == SurfaceType::FLAT) {
+        
+		printf("returning receiver program group %d, flat\n", num_raygen_programs + num_heliostat_programs);
         return m_program_groups[num_raygen_programs + num_heliostat_programs];
+
     }
     else if (surfaceType == SurfaceType::CYLINDER) {
         return m_program_groups[num_raygen_programs + num_heliostat_programs + 1];

@@ -444,10 +444,6 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     // Compute the hit point in world space.
     float3 world_hit = ray_orig + t * ray_dir;
 
-	printf("Intersection at (%f, %f, %f) with normal local (%f, %f, %f)\n",
-		world_hit.x, world_hit.y, world_hit.z,
-        N_local.x, N_local.y, N_local.z);
-
     // Report the intersection.
     // Here, the two reported extra attributes are the parametric coordinates (a1, a2),
     // encoded as unsigned integers.
