@@ -33,7 +33,7 @@ static float computeSunPlaneDistance(SoltraceState& state, std::vector<soltrace:
     // Max distance from Origin along sun vector
     float max_distance = 0.0f;
     for (auto& vertex : bounding_box_vertices) {
-        float distance = dot(vertex.point, sun_vector_hat);
+        float distance = abs(dot(vertex.point, sun_vector_hat));
         vertex.distance = distance;
         if (distance > max_distance) {
             max_distance = distance;
@@ -99,7 +99,7 @@ void geometryManager::compute_sun_plane() {
     std::vector<soltrace::ProjectedPoint> projected_points;
     for (const auto& vertex : bounding_box_vertices) {
         // Compute the buffer for this point
-        float buffer = vertex.distance * m_state.params.max_sun_angle;
+        float buffer = vertex.distance * tan(m_state.params.max_sun_angle);
         // Project the point onto the sun plane
         float3 projected_point = projectOntoPlaneAtDistance(m_state, vertex.point, d);
         float u = dot(projected_point, sun_u);
@@ -119,10 +119,10 @@ void geometryManager::compute_sun_plane() {
         v_min = fminf(v_min, point.point.y - point.buffer);
         v_max = fmaxf(v_max, point.point.y + point.buffer);
     }
-    //std::cout << "u min: " << u_min << "\n";
-    //std::cout << "u max: " << u_max << "\n";
-    //std::cout << "v min: " << v_min << "\n";
-    //std::cout << "v max: " << v_max << "\n";
+    std::cout << "u min: " << u_min << "\n";
+    std::cout << "u max: " << u_max << "\n";
+    std::cout << "v min: " << v_min << "\n";
+    std::cout << "v max: " << v_max << "\n";
 
     // Define sun bounding box vertices in the sun's frame
     std::vector<float2> sun_bounds_sun_frame = {
