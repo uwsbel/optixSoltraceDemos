@@ -56,20 +56,42 @@ if __name__ == "__main__":
     # v2 = np.array([0.0, 0, 7])
     # anchor = np.array([-4.5, 0.0, 76.5])
 
-    SOLVER = "optix"
-    SURFACE = "FLAT"
-    folder_dir = "C:/Users/allie/Documents/SolTrace/hit_point_data/refactor/"
-    filename = folder_dir + "output_parabolic_test_three_heliostats.csv"
-    # v1, v2 and anchor points of the receiver
-    v1 = np.array([2.0, 0.0, 0.0])
-    v2 = np.array([0.0, 1.788854, 0.894428])
-    anchor = np.array([-1.0, -0.894427, 9.552786])
+    # SOLVER = "optix"
+    # SURFACE = "FLAT"
+    # folder_dir = "C:/Users/allie/Documents/SolTrace/hit_point_data/refactor/"
+    # filename = folder_dir + "output_parabolic_test_three_heliostats.csv"
+    # # v1, v2 and anchor points of the receiver
+    # v1 = np.array([2.0, 0.0, 0.0])
+    # v2 = np.array([0.0, 1.788854, 0.894428])
+    # anchor = np.array([-1.0, -0.894427, 9.552786])
 
     #     GeometryData::Parallelogram receiver(
     #     make_float3(2.0f, 0.0f, 0.0f),    // v1
     #     make_float3(0.0f, 1.788854f, 0.894428f),    // v2
     #     make_float3(-1.0f, -0.894427f, 9.552786f)     // anchor
     # );
+
+    # SOLVER = "optix"
+    # SURFACE = "FLAT"
+    # folder_dir = "C:/Users/allie/Documents/SolTrace/hit_point_data/refactor/SolarPilot_small_system/gpu/"
+    # filename = folder_dir + "output_small_system_parabolic_heliostats_flat_receiver_stinput.csv"
+    # # v1, v2 and anchor points of the receiver
+    # v1 = np.array([9.0, 0.0, 0.0])
+    # v2 = np.array([0.0, 0.0, 7])
+    # anchor = np.array([-4.5, 0.0, 76.5])
+
+    SOLVER = "solTrace"
+    SURFACE = "FLAT"
+    folder_dir = "C:/Users/allie/Documents/SolTrace/hit_point_data/refactor/SolarPilot_small_system/cpu/"
+    filename = folder_dir + "raydata_1-cpu.csv"
+    # v1, v2 and anchor points of the receiver
+    v1 = np.array([9.0, 0.0, 0.0])
+    v2 = np.array([0.0, 0.0, 7])
+    anchor = np.array([-4.5, 0.0, 76.5])
+
+    # Aperture anchor: -4.5, 4.28626e-16, 76.5
+    # Aperture v1: 9, 0, 0
+    # Aperture v2: 0, -8.57253e-16, 7
 
     # SOLVER = "solTrace"
     # SURFACE = "FLAT"
@@ -142,7 +164,9 @@ if __name__ == "__main__":
         y_local = receiver_pts_local[:, 1].T
 
         raybins_x = np.floor((x_local + dim_x/2)/dim_x*nx).astype(int)
+        print(raybins_x)
         raybins_y = np.floor((y_local + dim_y/2)/dim_y*ny).astype(int)
+        print(raybins_y)
 
         title_scatter = f"Receiver Hit Points in Local Coordinates \n Total # of Hits: {len(x_local)}"
         title_heatmap = "Binned Hit Counts"
@@ -191,23 +215,42 @@ if __name__ == "__main__":
     y_rec = np.arange(0, dim_y, dim_y/ny)
     # Calculate flux metrics
     # TODO - Output sun stats as well and read data, manual right now
+    # TOY PROBLEM
     # sun shape off
-    sun_xmax = 0.519808
-    sun_xmin = -5.94168
-    sun_ymax = 5.94892
-    sun_ymin = -5.94892
+    # sun_xmax = 0.519808
+    # sun_xmin = -5.94168
+    # sun_ymax = 5.94892
+    # sun_ymin = -5.94892
     # sun shape on
     # sun_xmax = 0.520613
     # sun_xmin = -5.9434
     # sun_ymax = 5.95019
     # sun_ymin = -5.95019      
-    nsunrays = 1000000
+    # nsunrays = 1000000
+
+    # SolarPilot small system
+    # sun shape on - this was too large (4.6 instead of 0.0046)
+    # sun_xmax = 270.959
+    # sun_xmin = -366.562
+    # sun_ymax = 323.884
+    # sun_ymin = -321.65
+    # nsunrays = 328507
+    # sun shape off
+    sun_xmax = -6.49947
+    sun_xmin = -606.263
+    sun_ymax = 446.404
+    sun_ymin = -455.776
+    nsunrays = 2631047
+
+    # nsunrays = 394025
 
     dni = 1000.0  # Direct normal irradiance in W/m^2
-    power_per_ray = (sun_xmax - sun_xmin) * (sun_ymax - sun_ymin) / nsunrays * dni
+    # power_per_ray = (sun_xmax - sun_xmin) * (sun_ymax - sun_ymin) / nsunrays * dni
+    power_per_ray = dni * (903.318 * 604.174) / nsunrays # 903.318 * 604.174 is the area of the sun shape in m^2
     # Compute power per ray (ppr) based on node area
     anode = dx * dy
     ppr = power_per_ray / anode
+    print(f"Power per ray: {power_per_ray:.2f} W/m^2")
 
     for r in range(len(raybins_x)):
         flux_2D[raybins_x[r], raybins_y[r]] += ppr 
@@ -215,8 +258,9 @@ if __name__ == "__main__":
     peak_flux = np.max(flux_2D)
     min_flux = np.min(flux_2D[flux_2D > 0])  # Ignore empty bins
     #avg_flux = np.mean(flux_2D[flux_2D > 0])
-    avg_flux = np.mean(flux_2D)
-    sigma_flux = np.std(flux_2D[flux_2D > 0])
+    #avg_flux = np.mean(flux_2D)
+    avg_flux = np.sum(flux_2D) / (nx * ny)  # Average over all bins, including empty ones
+    sigma_flux = np.std(flux_2D)
     uniformity = sigma_flux / avg_flux
 
     # Placeholder uncertainty model (TODO: UPDATE)
@@ -227,7 +271,7 @@ if __name__ == "__main__":
     print(f"Peak flux: {peak_flux:.2f}") # ± {peak_flux_uncertainty:.2f}")
     print(f"Min flux: {min_flux:.2f}")
     print(f"Avg flux: {avg_flux:.2f}") # ± {avg_flux_uncertainty:.2f}")
-    #print(f"Sigma: {sigma_flux:.2f}")
+    print(f"Sigma: {sigma_flux:.2f}")
     #print(f"Uniformity: {uniformity:.3f}")
 
     plt.title(f"Flux intensity")

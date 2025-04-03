@@ -10,12 +10,12 @@ int main(int argc, char* argv[]) {
     bool stinput = true; // Set to true if using stinput file, false otherwise
     bool parabolic = true; // Set to true for parabolic mirrors, false for flat mirrors
     // number of rays launched for the simulation
-    int num_rays = 1000000;
+    int num_rays = 3280833;
     // Create the simulation system.
     SolTrSystem system(num_rays);
 
     if (stinput) {
-        const char* stinput_file = "../data/stinput/toy_problem_parabolic.stinput"; // Default stinput file name
+        const char* stinput_file = "../data/stinput/small_system_parabolic_heliostats_flat_receiver.stinput"; // Default stinput file name
 
         if (argc > 1) {
             stinput_file = argv[1]; // Get the stinput file name from command line argument
@@ -157,6 +157,10 @@ int main(int argc, char* argv[]) {
         system.setSunAngle(sun_angle);
     }
 
+    // set up sun angle 
+    double sun_angle = 0.0; // sun angle
+    system.setSunAngle(sun_angle);
+
     ///////////////////////////////////
     // STEP 3  Initialize the system //
     ///////////////////////////////////
@@ -171,7 +175,7 @@ int main(int argc, char* argv[]) {
     //////////////////////////
     // STEP 5  Post process //
     //////////////////////////
-    system.writeOutput("output_parabolic_test_three_heliostats_stinput.csv");
+    system.writeOutput("output_small_system_parabolic_heliostats_flat_receiver_stinput.csv");
 
     /////////////////////////////////////////
     // STEP 6  Be a good citizen, clean up //

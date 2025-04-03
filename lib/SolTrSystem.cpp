@@ -484,25 +484,25 @@ bool SolTrSystem::read_sun(FILE* fp) {
 	read_line( buf, 1023, fp );
 	sscanf(buf, "USER SHAPE DATA\t%d", &count);
     // TODO: Update if supporting user shape data
-	// if (count > 0)
-	// {
-	// 	double *angle = new double[count];
-	// 	double *intensity = new double[count];
+	if (count > 0)
+	{
+		double *angle = new double[count];
+		double *intensity = new double[count];
 
-	// 	for (int i=0;i<count;i++)
-	// 	{
-	// 		double x, y;
-	// 		read_line( buf, 1023, fp );
-	// 		sscanf(buf, "%lg\t%lg", &x, &y);
-	// 		angle[i] = x;
-	// 		intensity[i] = y;
-	// 	}
+		for (int i=0;i<count;i++)
+		{
+			double x, y;
+			read_line( buf, 1023, fp );
+			sscanf(buf, "%lg\t%lg", &x, &y);
+			angle[i] = x;
+			intensity[i] = y;
+		}
 
-	// 	st_sun_userdata(cxt, count, angle, intensity );
+		//st_sun_userdata(cxt, count, angle, intensity );
 
-	// 	delete [] angle;
-	// 	delete [] intensity;	
-	// }
+		delete [] angle;
+		delete [] intensity;	
+	}
 
 	return true;
 }
