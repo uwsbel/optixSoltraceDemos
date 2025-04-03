@@ -267,7 +267,7 @@ void pipelineManager::createReceiverProgram()
     // flat receiver
     OptixProgramGroup           group;
     createHitGroupProgram(group,
-        m_state.geometry_module, "__intersection__parallelogram",
+        m_state.geometry_module, "__intersection__rectangle_flat",
         m_state.shading_module, "__closesthit__receiver");
 
     m_program_groups.push_back(group);

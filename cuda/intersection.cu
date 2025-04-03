@@ -298,9 +298,8 @@ extern "C" __global__ void __intersection__cylinder_y_capped()
 }
 
 
-// __intersection__rectangle_parabolic
-//
-// For a parabolic rectangle the base (flat projection) is defined by the anchor and two edges.
+// For a parabolic surface rectangle aperture where 
+// the base (normal projection) is defined by the center and its two unit edge vectors
 // In a local coordinate system (with origin at the anchor) the flat rectangle covers:
 //    x in [0, L1]  and  y in [0, L2],
 // where L1 and L2 are the lengths of the original edge vectors.
