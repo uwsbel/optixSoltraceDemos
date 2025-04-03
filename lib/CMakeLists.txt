@@ -5,6 +5,7 @@ add_library(geometry STATIC
     pipelineManager.cpp
     SolTrSystem.cpp
     Aperture.cpp
+    element.cpp
 )
 
 # Make the library available for other targets
