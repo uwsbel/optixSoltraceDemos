@@ -34,7 +34,10 @@ ApertureRectangle::~ApertureRectangle() {}
 ApertureType ApertureRectangle::get_aperture_type() const {
     return ApertureType::RECTANGLE;
 }
-
+void ApertureRectangle::compute_device_aperture(Vector3d pos, Vector3d aim_point) {
+	// Compute the device aperture based on the position and aim point
+	// This is a placeholder implementation
+}
 void ApertureRectangle::set_size(double x, double y) {
     x_dim = x;
     y_dim = y;
@@ -45,15 +48,6 @@ double ApertureRectangle::get_height() const { return y_dim; }
 float3 ApertureRectangle::get_anchor() { return m_anchor; }
 float3 ApertureRectangle::get_v1() { return m_v1; }
 float3 ApertureRectangle::get_v2() { return m_v2; }
-
-void ApertureRectangle::compute_device_aperture(Element* element) {
-    // Get the element's position and aim point
-    Vector3d pos = element->get_origin();
-    Vector3d aim_point = element->get_aim_point();
-    
-    // Call the other compute_device_aperture implementation
-    compute_device_aperture(pos, aim_point);
-}
 
 // ApertureCircle implementations
 ApertureCircle::ApertureCircle() : radius(1.0) {}
@@ -85,33 +79,6 @@ ApertureRectangleEasy::ApertureRectangleEasy(double xDim, double yDim) : x_dim(x
 
 ApertureType ApertureRectangleEasy::get_aperture_type() const {
     return ApertureType::EASY_RECTANGLE;
-}
-
-void ApertureRectangleEasy::compute_device_aperture(Vector3d pos, Vector3d normal) {
-    // For the easy version, we'll just set the origin directly
-    m_origin = make_float3(pos[0], pos[1], pos[2]);
-    
-    // Create a simple coordinate system based on the normal
-    // This is a simplified version compared to the full ApertureRectangle implementation
-    Vector3d up(0, 0, 1);
-    Vector3d right = normal.cross(up).normalized();
-    Vector3d new_up = normal.cross(right).normalized();
-    
-    m_x_axis = make_float3(right[0], right[1], right[2]);
-    m_y_axis = make_float3(new_up[0], new_up[1], new_up[2]);
-}
-
-void ApertureRectangleEasy::compute_device_aperture(Element* element) {
-    // get the origin and euler angles
-    Vector3d origin = element->get_origin();
-    m_origin = make_float3(origin[0], origin[1], origin[2]);
-
-    // note that euler angles are initialized already when elements are added to the system 
-    Matrix33d rotation_matrix = element->get_rotation_matrix();
-
-    // populate m_x_axis and m_y_axis
-    m_x_axis = mathUtil::toFloat3(rotation_matrix.get_x_basis());
-    m_y_axis = mathUtil::toFloat3(rotation_matrix.get_y_basis());        
 }
 
 float3 ApertureRectangleEasy::get_anchor() { return m_origin; }

@@ -24,9 +24,8 @@ public:
     virtual double get_height() const;
     virtual double get_radius() const;
 
-    // interface for defining the size of the aperture for device data
-    virtual void compute_device_aperture(Vector3d pos, Vector3d normal) = 0; 
-    virtual void compute_device_aperture(Element* element) = 0;
+    //// interface for defining the size of the aperture for device data
+    //virtual void compute_device_aperture(Vector3d pos, Vector3d normal) = 0; 
 
     // get anchor, v1 and v2
     virtual float3 get_anchor() = 0;
@@ -48,8 +47,7 @@ public:
     virtual float3 get_anchor() override;
     virtual float3 get_v1() override;
     virtual float3 get_v2() override;
-    void compute_device_aperture(Vector3d pos, Vector3d aim_point) override;
-    void compute_device_aperture(Element* element) override;
+    void compute_device_aperture(Vector3d pos, Vector3d aim_point);
 
 private:
     double x_dim;
@@ -84,8 +82,6 @@ public:
     virtual ~ApertureRectangleEasy() = default;
 
     virtual ApertureType get_aperture_type() const override;
-    void compute_device_aperture(Vector3d pos, Vector3d normal) override;
-    void compute_device_aperture(Element* element) override;
     virtual float3 get_anchor() override;
     virtual float3 get_v1() override;
     virtual float3 get_v2() override;

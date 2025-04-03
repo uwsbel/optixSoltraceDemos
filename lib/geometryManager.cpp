@@ -152,7 +152,7 @@ void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
 
     for (const auto& element : element_list) {
 		// Get the geometry data from the element
-		element->toDeviceGeometryData();
+		//element->toDeviceGeometryData();
 		
 		// Create an OptixAabb from the geometry data
 		OptixAabb aabb;
@@ -160,52 +160,32 @@ void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
         float3 m_max;
 
         // now we compute AABB based on its aperture and surface type
+        //if (element->get_surface_type() == SurfaceType::CYLINDER) {
+        //        // local min and max of the cylinder of y axis 
+        //        auto surface = std::dynamic_pointer_cast<SurfaceCylinder>(element->get_surface());
+        //        if (!surface) {
+        //            throw std::runtime_error("Failed to cast surface to SurfaceCylinder");
+        //        }
 
-        if (element->get_aperture_type() == ApertureType::RECTANGLE) {
+        //        double radius = surface->get_radius();
+        //        double half_height = surface->get_half_height();
+        //        Vector3d center = element->get_origin();
 
-            if (element->get_surface_type() == SurfaceType::FLAT || element->get_surface_type() == SurfaceType::PARABOLIC) {
+        //        m_min = make_float3(
+        //            center[0] - radius,
+        //            center[1] - half_height,
+        //            center[2] - radius
+        //        );
+        //        m_max = make_float3(
+        //            center[0] + radius,
+        //            center[1] + half_height,
+        //            center[2] + radius
+        //        );
 
-			element->toDeviceGeometryData(); // Ensure the geometry data is computed  
-			float3 anchor = element->get_aperture()->get_anchor(); // anchor point
-			float3 v1 = element->get_aperture()->get_v1(); // first vector
-			float3 v2 = element->get_aperture()->get_v2(); // second vector
-
-
-            float3 p00 = anchor;                 // Lower-left corner
-            float3 p01 = anchor + v1;           // Lower-right corner
-            float3 p10 = anchor + v2;           // Upper-left corner
-            float3 p11 = anchor + v1 + v2;     // Upper-right 
-
-            m_min = fminf(fminf(p00, p01), fminf(p10, p11));
-                m_max = fmaxf(fmaxf(p00, p01), fmaxf(p10, p11));
-            }
-            else if (element->get_surface_type() == SurfaceType::CYLINDER) {
-                // local min and max of the cylinder of y axis 
-                auto surface = std::dynamic_pointer_cast<SurfaceCylinder>(element->get_surface());
-                if (!surface) {
-                    throw std::runtime_error("Failed to cast surface to SurfaceCylinder");
-                }
-
-                double radius = surface->get_radius();
-                double half_height = surface->get_half_height();
-                Vector3d center = element->get_origin();
-
-                m_min = make_float3(
-                    center[0] - radius,
-                    center[1] - half_height,
-                    center[2] - radius
-                );
-                m_max = make_float3(
-                    center[0] + radius,
-                    center[1] + half_height,
-                    center[2] + radius
-                );
-
-                // transform to global frame 
-                
-            }
-		}
-        else if (element->get_aperture_type() == ApertureType::CIRCLE) {
+        //        // transform to global frame 
+        //        
+        //    }
+        if (element->get_aperture_type() == ApertureType::CIRCLE) {
 
             /********* TODO **********/
 			m_min = make_float3(0.0f, 0.0f, 0.0f); // Initialize min to a large value
@@ -215,7 +195,6 @@ void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
 
 
         if (element->get_aperture_type() == ApertureType::EASY_RECTANGLE) {
-
             element->compute_bounding_box();
 			m_min.x = element->get_lower_bounding_box()[0];
 			m_min.y = element->get_lower_bounding_box()[1];

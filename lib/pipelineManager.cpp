@@ -318,16 +318,17 @@ OptixProgramGroup pipelineManager::getMirrorProgram(SurfaceApertureMap map) cons
 			std::cout << "returning mirror program group 1, rectangle flat" << std::endl;
 			return m_program_groups[1];
 		}
-        else if (map.surfaceType == SurfaceType::PARABOLIC) {
-			std::cout << "returning mirror program group 2, rectangle parabolic" << std::endl;
-			return m_program_groups[2];
-		}
 	}
 
     else if (map.apertureType == ApertureType::EASY_RECTANGLE) {
         if (map.surfaceType == SurfaceType::FLAT) {
             std::cout << "returning mirror program group 3, easy rectangle flat" << std::endl;
             return m_program_groups[3];
+        }
+
+        else if (map.surfaceType == SurfaceType::PARABOLIC) {
+            std::cout << "returning mirror program group 2, rectangle parabolic" << std::endl;
+            return m_program_groups[2];
         }
     }
 

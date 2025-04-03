@@ -119,29 +119,6 @@ GeometryDataST Element::toDeviceGeometryData() const {
     SurfaceType surface_type = m_surface->get_surface_type();
     ApertureType aperture_type = m_aperture->get_aperture_type();
 
-    if (aperture_type == ApertureType::RECTANGLE) {
-        m_aperture->compute_device_aperture(m_origin, m_aim_point);
-
-        float3 anchor = m_aperture->get_anchor();
-        float3 v1 = m_aperture->get_v1();
-        float3 v2 = m_aperture->get_v2();
-
-        if (surface_type == SurfaceType::FLAT) {
-            GeometryDataST::Parallelogram heliostat(v1, v2, anchor);
-            geometry_data.setParallelogram(heliostat);
-
-        }
-
-        if (surface_type == SurfaceType::PARABOLIC) {
-            GeometryDataST::Rectangle_Parabolic heliostat(v1, v2, anchor,
-                (float)m_surface->get_curvature_1(),
-                (float)m_surface->get_curvature_2());
-            geometry_data.setRectangleParabolic(heliostat);
-        }
-    }
-
-
-
     if (aperture_type == ApertureType::EASY_RECTANGLE) {
 
         double width = m_aperture->get_width();
@@ -155,9 +132,23 @@ GeometryDataST Element::toDeviceGeometryData() const {
         std::cout << "x basis of heliostat : " << v1[0] << ", " << v1[1] << ", " << v1[2] << std::endl;
         std::cout << "y basis of heliostat : " << v2[0] << ", " << v2[1] << ", " << v2[2] << std::endl;
 
-        GeometryDataST::Rectangle_Flat heliostat(mathUtil::toFloat3(m_origin), mathUtil::toFloat3(v1), mathUtil::toFloat3(v2), (float)width, (float)height);
-        geometry_data.setRectangle_Flat(heliostat);
+        SurfaceType surface_type = m_surface->get_surface_type();
+        ApertureType aperture_type = m_aperture->get_aperture_type();
 
+        if (surface_type == SurfaceType::FLAT) {
+            GeometryDataST::Rectangle_Flat heliostat(mathUtil::toFloat3(m_origin), mathUtil::toFloat3(v1), mathUtil::toFloat3(v2), (float)width, (float)height);
+            geometry_data.setRectangle_Flat(heliostat);
+        }
+
+        if (surface_type == SurfaceType::PARABOLIC) {
+			v1 = v1 * (float)(-width);
+			v2 = v2 * (float)height;
+			float3 anchor = mathUtil::toFloat3(m_origin - v1 * 0.5 - v2 * 0.5);
+            GeometryDataST::Rectangle_Parabolic heliostat(mathUtil::toFloat3(v1), mathUtil::toFloat3(v2),  anchor,
+                (float)m_surface->get_curvature_1(),
+                (float)m_surface->get_curvature_2());
+            geometry_data.setRectangleParabolic(heliostat);
+        }
     }
 
     return geometry_data;
