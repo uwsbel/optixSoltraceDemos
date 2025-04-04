@@ -7,11 +7,15 @@ set(DEMOS
 #    demo_refactor
 #    demo_parabolic_surface
      demo_three_heliostats
+     demo_refactor
+     demo_refactor_test
+     demo_parabolic_surface
+#    demo_large_scene
 #    demo_cylinder_receiver
 )
 
 message(STATUS "Adding demo programs for OptiX SolTrace ...")
-
+ 
 # Loop through demos
 foreach(PROGRAM ${DEMOS})
     message(STATUS "Adding ${PROGRAM}")
