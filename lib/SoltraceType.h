@@ -3,8 +3,7 @@
 
 enum class ApertureType {
 	RECTANGLE,
-	CIRCLE,
-	EASY_RECTANGLE
+	CIRCLE
 };
 
 

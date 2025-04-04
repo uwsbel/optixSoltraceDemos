@@ -28,33 +28,9 @@ public:
     //virtual void compute_device_aperture(Vector3d pos, Vector3d normal) = 0; 
 
     // get anchor, v1 and v2
-    virtual float3 get_anchor() = 0;
-    virtual float3 get_v1() = 0;
-    virtual float3 get_v2() = 0;
-};
-
-// Concrete class for a rectangular aperture.
-class ApertureRectangle : public Aperture {
-public:
-    ApertureRectangle();
-    ApertureRectangle(double xDim, double yDim);
-    ~ApertureRectangle();
-
-    virtual ApertureType get_aperture_type() const override;
-    void set_size(double x, double y);
-    double get_width() const override;
-    double get_height() const override;
-    virtual float3 get_anchor() override;
-    virtual float3 get_v1() override;
-    virtual float3 get_v2() override;
-    void compute_device_aperture(Vector3d pos, Vector3d aim_point);
-
-private:
-    double x_dim;
-    double y_dim;
-    float3 m_anchor;
-    float3 m_v1;    // vector along the width
-    float3 m_v2;    // vector along the height
+    //virtual float3 get_origin() = 0;
+    //virtual float3 get_v1() = 0;
+    //virtual float3 get_v2() = 0;
 };
 
 // Concrete class for a circular aperture.
@@ -75,25 +51,25 @@ private:
 };
 
 // Concrete class for an easy rectangular aperture.
-class ApertureRectangleEasy : public Aperture {
+class ApertureRectangle : public Aperture {
 public:
-    ApertureRectangleEasy();
-    ApertureRectangleEasy(double xDim, double yDim);
-    virtual ~ApertureRectangleEasy() = default;
+    ApertureRectangle();
+    ApertureRectangle(double xDim, double yDim);
+    virtual ~ApertureRectangle() = default;
 
     virtual ApertureType get_aperture_type() const override;
-    virtual float3 get_anchor() override;
-    virtual float3 get_v1() override;
-    virtual float3 get_v2() override;
+    //virtual float3 get_origin() override;
+    //virtual float3 get_v1() override;
+    //virtual float3 get_v2() override;
     virtual double get_width() const override;
     virtual double get_height() const override;
 
 private:
     double x_dim;
     double y_dim;
-    float3 m_origin;
-    float3 m_x_axis;
-    float3 m_y_axis;
+    //float3 m_origin;
+    //float3 m_x_axis;
+    //float3 m_y_axis;
 };
 
 

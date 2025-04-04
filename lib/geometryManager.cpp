@@ -151,8 +151,6 @@ void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
 	m_aabb_list.clear(); // Clear the existing AABB list
 
     for (const auto& element : element_list) {
-		// Get the geometry data from the element
-		//element->toDeviceGeometryData();
 		
 		// Create an OptixAabb from the geometry data
 		OptixAabb aabb;
@@ -194,7 +192,7 @@ void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
         }
 
 
-        if (element->get_aperture_type() == ApertureType::EASY_RECTANGLE) {
+        if (element->get_aperture_type() == ApertureType::RECTANGLE) {
             element->compute_bounding_box();
 			m_min.x = element->get_lower_bounding_box()[0];
 			m_min.y = element->get_lower_bounding_box()[1];

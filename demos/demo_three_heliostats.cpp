@@ -9,7 +9,7 @@
 
 int main(int argc, char* argv[]) {
     bool stinput = false; // Set to true if using stinput file, false otherwise
-    bool parabolic = false; // Set to true for parabolic mirrors, false for flat mirrors
+    bool parabolic = true; // Set to true for parabolic mirrors, false for flat mirrors
     // number of rays launched for the simulation
     int num_rays = 1000000;
     // Create the simulation system.
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 
         double dim_x = 1.0;
         double dim_y = 1.95;
-        auto aperture_heliostat = std::make_shared<ApertureRectangleEasy>(dim_x, dim_y);
+        auto aperture_heliostat = std::make_shared<ApertureRectangle>(dim_x, dim_y);
         e1->set_aperture(aperture_heliostat);
 
         system.AddElement(e1);
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
             e2->set_surface(surface_e2);
         }
 
-        auto aperture_e2 = std::make_shared<ApertureRectangleEasy>(dim_x, dim_y);
+        auto aperture_e2 = std::make_shared<ApertureRectangle>(dim_x, dim_y);
         e2->set_aperture(aperture_heliostat);
 
         system.AddElement(e2);
@@ -105,13 +105,13 @@ int main(int argc, char* argv[]) {
             e3->set_surface(surface_e3);
         }
 
-        auto aperture_e3 = std::make_shared<ApertureRectangleEasy>(dim_x, dim_y);
+        auto aperture_e3 = std::make_shared<ApertureRectangle>(dim_x, dim_y);
         e3->set_aperture(aperture_heliostat);
 
         system.AddElement(e3);
 
         Vector3d receiver_origin(0, 0, 10.0); // origin of the receiver
-        Vector3d receiver_aim_point(0, 5, 0); // aim point of the receiver
+        Vector3d receiver_aim_point(0, 5, 10.0); // aim point of the receiver
         double receiver_dim_x = 2.0;
         double receiver_dim_y = 2.0;
         auto e4 = std::make_shared<Element>();
@@ -122,14 +122,17 @@ int main(int argc, char* argv[]) {
         ////////////////
         // receiver   //
         ////////////////
-        auto receiver_aperture = std::make_shared<ApertureRectangleEasy>(receiver_dim_x, receiver_dim_y);
+        double cyl_height = 2;
+        double cyl_radius = 0.5;
+        auto receiver_aperture = std::make_shared<ApertureRectangle>(2*cyl_radius, cyl_height);
         e4->set_aperture(receiver_aperture);
 
         ///////////////////////////////////
         // STEP 2.3 create flat surface //
         //////////////////////////////////
         auto receiver_surface = std::make_shared<SurfaceFlat>();
-        e4->set_surface(receiver_surface);
+		auto receiver_surface_cylinder = std::make_shared<SurfaceCylinder>();
+        e4->set_surface(receiver_surface_cylinder);
 
         ////////////////////////////////////////////
         // STEP 2.4 Add the element to the system //
@@ -138,7 +141,7 @@ int main(int argc, char* argv[]) {
 
         // set up sun vector and angle 
         Vector3d sun_vector(0.0, 0.0, 100.0); // sun vector
-        double sun_angle = 0.0; // sun angle
+        double sun_angle = 0.004; // sun angle
 
         system.setSunVector(sun_vector);
         system.setSunAngle(sun_angle);
@@ -158,7 +161,13 @@ int main(int argc, char* argv[]) {
     //////////////////////////
     // STEP 5  Post process //
     //////////////////////////
-    system.writeOutput("output_parabolic_test_three_heliostats_stinput.csv");
+    if (parabolic) {
+        system.writeOutput("output_parabolic_heliostats.csv");
+    }
+    else {
+		system.writeOutput("output_flat_heliostats.csv");
+    }
+
 
     /////////////////////////////////////////
     // STEP 6  Be a good citizen, clean up //

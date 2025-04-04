@@ -8,6 +8,7 @@
 #include "mathUtil.h"
 #include "cuda/GeometryDataST.h"
 #include "element.h"
+#include "vector"
 
 ElementBase::ElementBase() {}
 
@@ -119,7 +120,7 @@ GeometryDataST Element::toDeviceGeometryData() const {
     SurfaceType surface_type = m_surface->get_surface_type();
     ApertureType aperture_type = m_aperture->get_aperture_type();
 
-    if (aperture_type == ApertureType::EASY_RECTANGLE) {
+    if (aperture_type == ApertureType::RECTANGLE) {
 
         double width = m_aperture->get_width();
         double height = m_aperture->get_height();
@@ -149,6 +150,27 @@ GeometryDataST Element::toDeviceGeometryData() const {
                 (float)m_surface->get_curvature_2());
             geometry_data.setRectangleParabolic(heliostat);
         }
+
+		if (surface_type == SurfaceType::CYLINDER) {
+            float radius = (float)width / 2.;
+            float half_height = (float)height / 2.;
+
+			float3 center = mathUtil::toFloat3(m_origin);
+			Matrix33d rotation_matrix = get_rotation_matrix();  // L2G rotation matrix
+
+			float3 base_x = mathUtil::toFloat3(rotation_matrix.get_x_basis());
+
+			float3 base_z = mathUtil::toFloat3(rotation_matrix.get_z_basis());
+
+			printf("heliostat center: %f, %f, %f\n", center.x, center.y, center.z);
+			printf("heliostat base_x: %f, %f, %f\n", base_x.x, base_x.y, base_x.z);
+			printf("heliostat base_z: %f, %f, %f\n", base_z.x, base_z.y, base_z.z);
+
+
+			GeometryDataST::Cylinder_Y heliostat(center, radius, half_height, base_x, base_z);
+
+			geometry_data.setCylinder_Y(heliostat);
+		}
     }
 
     return geometry_data;
@@ -167,17 +189,18 @@ void Element::compute_bounding_box() {
 
     // now check the type of the aperture
     ApertureType aperture_type = m_aperture->get_aperture_type();
+	SurfaceType surface_type = m_surface->get_surface_type();
 
-    if (aperture_type == ApertureType::EASY_RECTANGLE) {
+    if (aperture_type == ApertureType::RECTANGLE && surface_type != SurfaceType::CYLINDER) {
         // get the width and height of the aperture
         double width = m_aperture->get_width();
         double height = m_aperture->get_height();
 
         // compute the four corners of the rectangle locally
         Vector3d corner1 = Vector3d(-width / 2, -height / 2, 0.0);
-        Vector3d corner2 = Vector3d(width / 2, -height / 2, 0.0);
-        Vector3d corner3 = Vector3d(width / 2, height / 2, 0.0);
-        Vector3d corner4 = Vector3d(-width / 2, height / 2, 0.0);
+        Vector3d corner2 = Vector3d( width / 2, -height / 2, 0.0);
+        Vector3d corner3 = Vector3d( width / 2,  height / 2, 0.0);
+        Vector3d corner4 = Vector3d(-width / 2,  height / 2, 0.0);
 
         // transform the corners to the global frame
         Vector3d corner1_global = rotation_matrix * corner1 + m_origin;
@@ -193,6 +216,73 @@ void Element::compute_bounding_box() {
         m_upper_box_bound[0] = fmax(fmax(corner1_global[0], corner2_global[0]), fmax(corner3_global[0], corner4_global[0]));
         m_upper_box_bound[1] = fmax(fmax(corner1_global[1], corner2_global[1]), fmax(corner3_global[1], corner4_global[1]));
         m_upper_box_bound[2] = fmax(fmax(corner1_global[2], corner2_global[2]), fmax(corner3_global[2], corner4_global[2]));
-
     }
+
+    // slightly different for the cylinder, we want to know the radius and half height
+	if (surface_type == SurfaceType::CYLINDER) {
+		// get the radius and full height of the cylinder
+        double width  = m_aperture->get_width();
+        double height = m_aperture->get_height();
+
+        // compute 8 corners of the cyliinder box locally
+		Vector3d corner1 = Vector3d(-width / 2, -height / 2, -width / 2);
+		Vector3d corner2 = Vector3d( width / 2, -height / 2, -width / 2);
+		Vector3d corner3 = Vector3d(-width / 2,  height / 2, -width / 2);
+		Vector3d corner4 = Vector3d( width / 2,  height / 2, -width / 2);
+        Vector3d corner5 = Vector3d(-width / 2, -height / 2,  width / 2);
+        Vector3d corner6 = Vector3d( width / 2, -height / 2,  width / 2);
+        Vector3d corner7 = Vector3d(-width / 2,  height / 2,  width / 2);
+        Vector3d corner8 = Vector3d( width / 2,  height / 2,  width / 2);
+
+		// get the rotation matrix
+		Matrix33d rotation_matrix = get_rotation_matrix();  // L2G rotation matrix
+
+		// transform the corners to the global frame
+		Vector3d corner1_global = rotation_matrix * corner1 + m_origin;
+		Vector3d corner2_global = rotation_matrix * corner2 + m_origin;
+		Vector3d corner3_global = rotation_matrix * corner3 + m_origin;
+		Vector3d corner4_global = rotation_matrix * corner4 + m_origin;
+		Vector3d corner5_global = rotation_matrix * corner5 + m_origin;
+		Vector3d corner6_global = rotation_matrix * corner6 + m_origin;
+		Vector3d corner7_global = rotation_matrix * corner7 + m_origin;
+		Vector3d corner8_global = rotation_matrix * corner8 + m_origin;
+
+		// go through the corners and find the min and max x, y, z
+		std::vector<Vector3d> corners = { corner1_global, corner2_global, corner3_global, corner4_global,
+					corner5_global, corner6_global, corner7_global, corner8_global };
+
+		double min_x = std::numeric_limits<double>::max();
+		double min_y = std::numeric_limits<double>::max();
+		double min_z = std::numeric_limits<double>::max();
+
+		double max_x = std::numeric_limits<double>::lowest();
+		double max_y = std::numeric_limits<double>::lowest();
+		double max_z = std::numeric_limits<double>::lowest();
+
+		for (auto& corner : corners) {
+			min_x = fmin(min_x, corner[0]);
+			min_y = fmin(min_y, corner[1]);
+			min_z = fmin(min_z, corner[2]);
+
+			max_x = fmax(max_x, corner[0]);
+			max_y = fmax(max_y, corner[1]);
+			max_z = fmax(max_z, corner[2]);
+		}
+
+		// set the lower and upper bounds
+		m_lower_box_bound[0] = min_x;
+		m_lower_box_bound[1] = min_y;
+		m_lower_box_bound[2] = min_z;
+
+		m_upper_box_bound[0] = max_x;
+		m_upper_box_bound[1] = max_y;
+		m_upper_box_bound[2] = max_z;
+	}
+
+
+
+
+
+
+
 }
