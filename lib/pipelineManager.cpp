@@ -315,12 +315,12 @@ OptixProgramGroup pipelineManager::getMirrorProgram(SurfaceApertureMap map) cons
 
     if (map.apertureType == ApertureType::RECTANGLE) {
         if (map.surfaceType == SurfaceType::FLAT) {
-            std::cout << "returning mirror program group 3, easy rectangle flat" << std::endl;
+            //std::cout << "returning mirror program group 3, easy rectangle flat" << std::endl;
             return m_program_groups[3];
         }
 
         else if (map.surfaceType == SurfaceType::PARABOLIC) {
-            std::cout << "returning mirror program group 2, rectangle parabolic" << std::endl;
+            //std::cout << "returning mirror program group 2, rectangle parabolic" << std::endl;
             return m_program_groups[2];
 		}
 
@@ -328,11 +328,11 @@ OptixProgramGroup pipelineManager::getMirrorProgram(SurfaceApertureMap map) cons
 
     else if (map.apertureType == ApertureType::CIRCLE) {
         if (map.surfaceType == SurfaceType::FLAT) {
-			std::cout << "returning mirror program group 4, circle flat" << std::endl;
+			//std::cout << "returning mirror program group 4, circle flat" << std::endl;
 			return m_program_groups[3];
 		}
         else if (map.surfaceType == SurfaceType::PARABOLIC) {
-			std::cout << "returning mirror program group 5, circle parabolic" << std::endl;
+			//std::cout << "returning mirror program group 5, circle parabolic" << std::endl;
 			return m_program_groups[4];
 		}
 	}
@@ -344,12 +344,12 @@ OptixProgramGroup pipelineManager::getReceiverProgram(SurfaceType surfaceType) c
     // Second receiver (cylinder) is at index num_raygen_programs + num_heliostat_programs + 1
     if (surfaceType == SurfaceType::FLAT) {
         
-		printf("returning receiver program group %d, flat\n", num_raygen_programs + num_heliostat_programs);
+		//printf("returning receiver program group %d, flat\n", num_raygen_programs + num_heliostat_programs);
         return m_program_groups[num_raygen_programs + num_heliostat_programs];
 
     }
     else if (surfaceType == SurfaceType::CYLINDER) {
-        printf("returning receiver program group %d, flat\n", num_raygen_programs + num_heliostat_programs + 1);
+        //printf("returning receiver program group %d, flat\n", num_raygen_programs + num_heliostat_programs + 1);
         return m_program_groups[num_raygen_programs + num_heliostat_programs + 1];
     }
     throw std::runtime_error("Unsupported receiver surface type");

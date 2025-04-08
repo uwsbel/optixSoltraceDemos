@@ -3,8 +3,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <filesystem>
 #include <optix_function_table_definition.h>
-
 
 int main(int argc, char* argv[]) {
     bool stinput = true; // Set to true if using stinput file, false otherwise
@@ -16,7 +16,11 @@ int main(int argc, char* argv[]) {
     SolTrSystem system(num_rays);
 
     if (stinput) {
-        const char* stinput_file = "../data/stinput/toy_problem_parabolic.stinput"; // Default stinput file name
+        //const char* stinput_file = "../bin/data/stinput/toy_problem_parabolic.stinput"; // Default stinput file name
+		// print out current directory
+		//std::cout << "Current directory: " << std::filesystem::current_path()<< std::endl;
+        //const char* stinput_file = "../bin/data/stinput/large-system-flat-heliostats-cylindrical.stinput";
+        const char* stinput_file = "../data/stinput/large-system-flat-heliostats-cylindrical.stinput";
 
         if (argc > 1) {
             stinput_file = argv[1]; // Get the stinput file name from command line argument

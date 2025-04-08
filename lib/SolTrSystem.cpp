@@ -464,7 +464,8 @@ bool SolTrSystem::read_sun(FILE* fp) {
 	cshape = tolower(cshape);
 
     // TODO: Update if supporting other sun shapes
-    setSunAngle(Sigma);
+    //setSunAngle(Sigma * 0.001);
+    setSunAngle(0.0);
 
 	read_line( buf, 1023, fp );
 	double X, Y, Z, Latitude, Day, Hour;
@@ -645,6 +646,7 @@ bool SolTrSystem::read_element(FILE* fp) {
 
     elem->set_origin(origin);
     elem->set_aim_point(aim_point);
+	elem->set_zrot(atof(tok[7].c_str())); // rotation of the element
 
     // st_element_zrot( cxt, istage, ielm,  atof( tok[7].c_str() ) );
 	
@@ -656,13 +658,30 @@ bool SolTrSystem::read_element(FILE* fp) {
         elem->set_aperture(aperture);
     }
 
+    // cylindrical receiver 
+	if (!tok[8].empty() && tok[8][0] == 'l' && tok[17][0] == 't') {
+		double dim_y = atof(tok[11].c_str()); // full height of the cylindrical receiver 
+		//double dim_y = atof(tok[10].c_str());
+		double curv = atof(tok[18].c_str());
+		double dim_x = 1 / curv * 2.0; // diameter of the receiver
+        //receiver_dim_x = 0.5;  // diameter of the receiver
+        //receiver_dim_y = 2.0;  // full height of the cylindrical receiver
+
+        auto aperture = std::make_shared<ApertureRectangle>(dim_x, dim_y);
+        elem->set_aperture(aperture);
+		auto surface = std::make_shared<SurfaceCylinder>();
+		elem->set_surface(surface);
+	}
+
+
     if (!tok[17].empty() && tok[17][0] == 'p') {
         double curv_x = atof(tok[18].c_str());
         double curv_y = atof(tok[19].c_str());
         auto surface = std::make_shared<SurfaceParabolic>();
         surface->set_curvature(curv_x, curv_y);
         elem->set_surface(surface);
-    } else {
+	}
+	else if (!tok[17].empty() && tok[17][0] == 'f') {
         // Create a flat surface if not parabolic
         auto surface = std::make_shared<SurfaceFlat>();
         elem->set_surface(surface);

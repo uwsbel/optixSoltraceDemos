@@ -102,13 +102,11 @@ Matrix33d Element::get_rotation_matrix() const {
 
 // return upper bounding box
 Vector3d Element::get_upper_bounding_box() const {
-    printf("upper bounding box: %f, %f, %f\n", m_upper_box_bound[0], m_upper_box_bound[1], m_upper_box_bound[2]);
     return m_upper_box_bound;
 }
 
 // return lower bounding box
 Vector3d Element::get_lower_bounding_box() const {
-    printf("lower bounding box: %f, %f, %f\n", m_lower_box_bound[0], m_lower_box_bound[1], m_lower_box_bound[2]);
     return m_lower_box_bound;
 }
 
@@ -130,8 +128,8 @@ GeometryDataST Element::toDeviceGeometryData() const {
         Vector3d v1 = rotation_matrix.get_x_basis();
         Vector3d v2 = rotation_matrix.get_y_basis();
 
-        std::cout << "x basis of heliostat : " << v1[0] << ", " << v1[1] << ", " << v1[2] << std::endl;
-        std::cout << "y basis of heliostat : " << v2[0] << ", " << v2[1] << ", " << v2[2] << std::endl;
+        //std::cout << "x basis of heliostat : " << v1[0] << ", " << v1[1] << ", " << v1[2] << std::endl;
+        //std::cout << "y basis of heliostat : " << v2[0] << ", " << v2[1] << ", " << v2[2] << std::endl;
 
         SurfaceType surface_type = m_surface->get_surface_type();
         ApertureType aperture_type = m_aperture->get_aperture_type();
@@ -161,11 +159,6 @@ GeometryDataST Element::toDeviceGeometryData() const {
 			float3 base_x = mathUtil::toFloat3(rotation_matrix.get_x_basis());
 
 			float3 base_z = mathUtil::toFloat3(rotation_matrix.get_z_basis());
-
-			printf("heliostat center: %f, %f, %f\n", center.x, center.y, center.z);
-			printf("heliostat base_x: %f, %f, %f\n", base_x.x, base_x.y, base_x.z);
-			printf("heliostat base_z: %f, %f, %f\n", base_z.x, base_z.y, base_z.z);
-
 
 			GeometryDataST::Cylinder_Y heliostat(center, radius, half_height, base_x, base_z);
 
