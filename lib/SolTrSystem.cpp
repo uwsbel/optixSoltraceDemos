@@ -623,57 +623,104 @@ bool SolTrSystem::read_element(FILE* fp) {
 	
     //int ielm = ::st_add_element( cxt, istage );
 
-	char buf[1024];
-	read_line(buf, 1023, fp);
+    char buf[1024];
+    read_line(buf, 1023, fp);
 
-	std::vector<std::string> tok = split( buf, "\t", true, false );
-	if (tok.size() < 29)
-	{
-		printf("too few tokens for element: %d\n", tok.size());
-		printf("\t>> %s\n", buf);
-		return false;
-	}
+    std::vector<std::string> tok = split(buf, "\t", true, false);
+    if (tok.size() < 29)
+    {
+        printf("too few tokens for element: %d\n", tok.size());
+        printf("\t>> %s\n", buf);
+        return false;
+    }
 
-	//st_element_enabled( cxt, istage, ielm,  atoi( tok[0].c_str() ) ? 1 : 0 );
+    if (tok[8][0] == 'c' && tok[17][0] == 'f')
+    {
+        printf("Assuming cylindrical element cap. Skipping element. \n");
+        return true;
+    }
+
+    // st_element_enabled( cxt, istage, ielm,  atoi( tok[0].c_str() ) ? 1 : 0 );
     auto elem = std::make_shared<Element>();
     Vector3d origin(atof(tok[1].c_str()),
                     atof(tok[2].c_str()),
                     atof(tok[3].c_str())); // origin of the element
+    if (tok[8][0] == 'l' && tok[17][0] == 't')
+    {
+        // Cylindrical element, offset y coordinate by radius to center the cylinder
+        origin[1] += 1 / atof(tok[18].c_str()); // tok[18] is 1 / radius
+    }
     Vector3d aim_point(atof(tok[4].c_str()),
                        atof(tok[5].c_str()),
                        atof(tok[6].c_str())); // aim point of the element
+    double zrot = atof(tok[7].c_str());       // z rotation of the element
 
     elem->set_origin(origin);
     elem->set_aim_point(aim_point);
+    elem->set_zrot(zrot);
 
-    // st_element_zrot( cxt, istage, ielm,  atof( tok[7].c_str() ) );
-	
     // TODO: Add more aperature and surface types
-    if (!tok[8].empty() && tok[8][0] == 'r') {
+    // Aperatures
+    if (tok[8][0] == 'r')
+    {
         double dim_x = atof(tok[9].c_str());
         double dim_y = atof(tok[10].c_str());
         auto aperture = std::make_shared<ApertureRectangle>(dim_x, dim_y);
         elem->set_aperture(aperture);
     }
-
-    if (!tok[17].empty() && tok[17][0] == 'p') {
+    else if (tok[8][0] == 'l' && tok[17][0] == 't')
+    {
+        // In SolTrace STINPUT, this is the Single Axis Curvature Section Type
+        // Used for cylindrical elements. TODO: Update if used elsewhere.
+        double dim_x = 2 * (1 / atof(tok[18].c_str())); // tok[18] is 1 / radius
+        double dim_y = atof(tok[11].c_str());           // Length of the cylinder
+        auto aperture = std::make_shared<ApertureRectangle>(dim_x, dim_y);
+        elem->set_aperture(aperture);
+    }
+    else
+    {
+        // Aperature type not implemented
+        printf("Aperture type not implemented: %s\n", tok[8].c_str());
+        return false;
+    }
+    // Surfaces
+    if (tok[17][0] == 'p')
+    {
         double curv_x = atof(tok[18].c_str());
         double curv_y = atof(tok[19].c_str());
         auto surface = std::make_shared<SurfaceParabolic>();
         surface->set_curvature(curv_x, curv_y);
         elem->set_surface(surface);
-    } else {
-        // Create a flat surface if not parabolic
+    }
+    else if (tok[8][0] == 'l' && tok[17][0] == 't')
+    {
+        // In SolTrace STINPUT, this is the Cylindrical Type
+        // Used for cylindrical elements.
+        double radius = 1 / atof(tok[18].c_str()); // tok[18] is 1 / radius
+        double half_height = atof(tok[11].c_str()) / 2;
+        auto surface = std::make_shared<SurfaceCylinder>();
+        surface->set_radius(radius);
+        surface->set_half_height(half_height);
+        elem->set_surface(surface);
+    }
+    else if (tok[17][0] == 'f')
+    {
         auto surface = std::make_shared<SurfaceFlat>();
         elem->set_surface(surface);
     }
-	
-	// st_element_optic( cxt, istage, ielm,  tok[27].c_str() );
-	// st_element_interaction( cxt, istage, ielm,  atoi( tok[28].c_str()) );
+    else
+    {
+        // Surface type not implemented
+        printf("Surface type not implemented: %s\n", tok[17].c_str());
+        return false;
+    }
+
+    // st_element_optic( cxt, istage, ielm,  tok[27].c_str() );
+    // st_element_interaction( cxt, istage, ielm,  atoi( tok[28].c_str()) );
 
     AddElement(elem); // Add the element to the system
 
-	return true;
+    return true;
 }
 
 bool SolTrSystem::read_stage(FILE* fp) {
