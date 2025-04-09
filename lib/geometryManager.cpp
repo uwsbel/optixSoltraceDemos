@@ -87,6 +87,8 @@ void geometryManager::compute_sun_plane() {
     std::vector<soltrace::BoundingBoxVertex> bounding_box_vertices;
     int count = m_aabb_list.size();
 
+
+
     collectAllAABBVertices(m_aabb_list, bounding_box_vertices);
 
 
@@ -149,8 +151,6 @@ void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
 	m_aabb_list.clear(); // Clear the existing AABB list
 
     for (const auto& element : element_list) {
-		// Get the geometry data from the element
-		element->toDeviceGeometryData();
 		
 		// Create an OptixAabb from the geometry data
 		OptixAabb aabb;
@@ -158,29 +158,49 @@ void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
         float3 m_max;
 
         // now we compute AABB based on its aperture and surface type
+        //if (element->get_surface_type() == SurfaceType::CYLINDER) {
+        //        // local min and max of the cylinder of y axis 
+        //        auto surface = std::dynamic_pointer_cast<SurfaceCylinder>(element->get_surface());
+        //        if (!surface) {
+        //            throw std::runtime_error("Failed to cast surface to SurfaceCylinder");
+        //        }
 
-        if (element->get_aperture_type() == ApertureType::RECTANGLE) {
+        //        double radius = surface->get_radius();
+        //        double half_height = surface->get_half_height();
+        //        Vector3d center = element->get_origin();
 
-			element->toDeviceGeometryData(); // Ensure the geometry data is computed  
-			float3 anchor = element->get_aperture()->get_anchor(); // anchor point
-			float3 v1 = element->get_aperture()->get_v1(); // first vector
-			float3 v2 = element->get_aperture()->get_v2(); // second vector
+        //        m_min = make_float3(
+        //            center[0] - radius,
+        //            center[1] - half_height,
+        //            center[2] - radius
+        //        );
+        //        m_max = make_float3(
+        //            center[0] + radius,
+        //            center[1] + half_height,
+        //            center[2] + radius
+        //        );
 
-
-            float3 p00 = anchor;                 // Lower-left corner
-            float3 p01 = anchor + v1;           // Lower-right corner
-            float3 p10 = anchor + v2;           // Upper-left corner
-            float3 p11 = anchor + v1 + v2;     // Upper-right 
-
-            m_min = fminf(fminf(p00, p01), fminf(p10, p11));
-            m_max = fmaxf(fmaxf(p00, p01), fmaxf(p10, p11));
-		}
-        else if (element->get_aperture_type() == ApertureType::CIRCLE) {
+        //        // transform to global frame 
+        //        
+        //    }
+        if (element->get_aperture_type() == ApertureType::CIRCLE) {
 
             /********* TODO **********/
 			m_min = make_float3(0.0f, 0.0f, 0.0f); // Initialize min to a large value
 			m_max = make_float3(0.0f, 0.0f, 0.0f); // Initialize max to a small value
 
+        }
+
+
+        if (element->get_aperture_type() == ApertureType::RECTANGLE) {
+            element->compute_bounding_box();
+			m_min.x = element->get_lower_bounding_box()[0];
+			m_min.y = element->get_lower_bounding_box()[1];
+			m_min.z = element->get_lower_bounding_box()[2];
+
+			m_max.x = element->get_upper_bounding_box()[0];
+			m_max.y = element->get_upper_bounding_box()[1];
+			m_max.z = element->get_upper_bounding_box()[2];
         }
 
 

@@ -24,12 +24,14 @@ size_t LOG_SIZE = sizeof(LOG);
 
 const char* intersectionFuncs[] = {
     "__intersection__parallelogram",
-    "__intersection__rectangle_parabolic"
+    "__intersection__rectangle_parabolic",
+    "__intersection__rectangle_flat"
 };
 
 const char* closestHitFuncs[] = {
     "__closesthit__mirror",
-    "__closesthit__mirror__parabolic"
+    "__closesthit__mirror__parabolic",
+	"__closesthit__mirror"
 };
 
 const char* closestHitReceiverFuncs[] = {
@@ -262,28 +264,20 @@ void pipelineManager::createMirrorPrograms()
 // in reflectivity and absorption? 
 void pipelineManager::createReceiverProgram()
 {
-
     // flat receiver
     OptixProgramGroup           group;
-	createHitGroupProgram(group,
-		m_state.geometry_module, "__intersection__parallelogram",
-		m_state.shading_module, "__closesthit__receiver");
+    createHitGroupProgram(group,
+        m_state.geometry_module, "__intersection__rectangle_flat",
+        m_state.shading_module, "__closesthit__receiver");
 
     m_program_groups.push_back(group);
-    m_state.radiance_receiver_prog_group = group;
 
-
-    // TODO: similar needs to be done for receiver program 
-	// THIS SHOULD COME AFTER FIGURING OUT IF WE NEED THE RECEIVER PROGRAM .......
-    // 
-	// cylinder receiver
-	//createHitGroupProgram(group,
-	//	m_state.geometry_module, "__intersection__cylinder_y",
-	//	m_state.shading_module, "__closesthit__receiver__cylinder__y");
- //   
-	//m_program_groups.push_back(group);
-	//m_state.radiance_receiver_prog_group = group;
-
+    // cylinder receiver
+    createHitGroupProgram(group,
+        m_state.geometry_module, "__intersection__cylinder_y_capped",
+        m_state.shading_module, "__closesthit__receiver__cylinder__y");
+   
+    m_program_groups.push_back(group);
 }
 
 // Create program group for handling rays that miss all geometry.
@@ -319,25 +313,44 @@ OptixProgramGroup pipelineManager::getMirrorProgram(SurfaceApertureMap map) cons
     // need to figure out a better way to arrange the table
 	// should be depenedent on intersection func array .... 
 
-	if (map.apertureType == ApertureType::RECTANGLE) {
+    if (map.apertureType == ApertureType::RECTANGLE) {
         if (map.surfaceType == SurfaceType::FLAT) {
-			std::cout << "returning mirror program group 1, rectangle flat" << std::endl;
-			return m_program_groups[1];
-		}
+            std::cout << "returning mirror program group 3, easy rectangle flat" << std::endl;
+            return m_program_groups[3];
+        }
+
         else if (map.surfaceType == SurfaceType::PARABOLIC) {
-			std::cout << "returning mirror program group 2, rectangle parabolic" << std::endl;
-			return m_program_groups[2];
+            std::cout << "returning mirror program group 2, rectangle parabolic" << std::endl;
+            return m_program_groups[2];
 		}
-	}
+
+    }
+
     else if (map.apertureType == ApertureType::CIRCLE) {
         if (map.surfaceType == SurfaceType::FLAT) {
-			std::cout << "returning mirror program group 3, circle flat" << std::endl;
+			std::cout << "returning mirror program group 4, circle flat" << std::endl;
 			return m_program_groups[3];
 		}
         else if (map.surfaceType == SurfaceType::PARABOLIC) {
-			std::cout << "returning mirror program group 4, circle parabolic" << std::endl;
+			std::cout << "returning mirror program group 5, circle parabolic" << std::endl;
 			return m_program_groups[4];
 		}
 	}
+}
 
+OptixProgramGroup pipelineManager::getReceiverProgram(SurfaceType surfaceType) const {
+    // The receiver programs are added after the mirror programs
+    // First receiver (flat) is at index num_raygen_programs + num_heliostat_programs
+    // Second receiver (cylinder) is at index num_raygen_programs + num_heliostat_programs + 1
+    if (surfaceType == SurfaceType::FLAT) {
+        
+		printf("returning receiver program group %d, flat\n", num_raygen_programs + num_heliostat_programs);
+        return m_program_groups[num_raygen_programs + num_heliostat_programs];
+
+    }
+    else if (surfaceType == SurfaceType::CYLINDER) {
+        printf("returning receiver program group %d, flat\n", num_raygen_programs + num_heliostat_programs + 1);
+        return m_program_groups[num_raygen_programs + num_heliostat_programs + 1];
+    }
+    throw std::runtime_error("Unsupported receiver surface type");
 }

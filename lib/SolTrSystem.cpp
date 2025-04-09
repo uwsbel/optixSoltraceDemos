@@ -316,7 +316,7 @@ void SolTrSystem::createSBT(){
     // Hitgroup program record
     {
         // Total number of hitgroup records : one per ray type per object.
-        const size_t count_records = soltrace::RAY_TYPE_COUNT * obj_count;
+        const unsigned int count_records = soltrace::RAY_TYPE_COUNT * obj_count;
         std::vector<HitGroupRecord> hitgroup_records_list(count_records);
 
         // Note: Fill SBT record array the same order that acceleration structure is built.
@@ -325,10 +325,9 @@ void SolTrSystem::createSBT(){
         // TODO: Material params - arbitrary right now
         // TODO: separate number of heliostats and receivers 
 
-		int num_heliostats = m_element_list.size() - 1; // Assuming the last element is the receiver
-        int num_receivers = 1;
+		size_t num_heliostats = m_element_list.size() - 1; // Assuming the last element is the receiver
 
-        for (int i = 0; i < num_heliostats; i++) {
+        for (size_t i = 0; i < num_heliostats; i++) {
 
 			auto element = m_element_list.at(i);
 
@@ -353,13 +352,14 @@ void SolTrSystem::createSBT(){
         }
 
         // TODO: perform the same way 
-        for (int i = num_heliostats; i < m_element_list.size(); i++) {
-			auto element = m_element_list.at(i);
+        for (size_t i = num_heliostats; i < m_element_list.size(); i++) {
+            auto element = m_element_list.at(i);
             // Configure Receiver SBT record.
+            SurfaceType surface_type = element->get_surface_type();
             OPTIX_CHECK(optixSbtRecordPackHeader(
-                m_state.radiance_receiver_prog_group,
+                pipeline_manager->getReceiverProgram(surface_type),
                 &hitgroup_records_list[sbt_idx]));
-			hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
+            hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
             hitgroup_records_list[sbt_idx].data.material_data.receiver = {
                 0.95f, // Reflectivity.
                 0.0f,  // Transmissivity.
@@ -394,6 +394,9 @@ void SolTrSystem::createSBT(){
 
 void SolTrSystem::AddElement(std::shared_ptr<Element> e)
 {
+
+    // update the euler angles for the element
+    e->update_euler_angles();
     m_element_list.push_back(e);
 }
 

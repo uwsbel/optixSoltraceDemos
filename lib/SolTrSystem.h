@@ -106,7 +106,7 @@ public:
 	/// compute number of heliostat elements added to the system 
 	/// </summary>
 	/// <returns></returns>
-	int get_num_heliostats() const
+	size_t get_num_heliostats() const
 	{
 		return m_element_list.size() - 1; // Return the number of heliostats (elements) added
 	}

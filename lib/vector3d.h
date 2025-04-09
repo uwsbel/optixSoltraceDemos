@@ -96,6 +96,15 @@ public:
 		}
 	}
 
+    // constructor from nine individual values 
+    Matrix33d(double a11, double a12, double a13,
+              double a21, double a22, double a23,
+              double a31, double a32, double a33) {
+        data[0] = a11; data[1] = a12; data[2] = a13;
+        data[3] = a21; data[4] = a22; data[5] = a23;
+        data[6] = a31; data[7] = a32; data[8] = a33;
+    }
+
     Matrix33d(std::initializer_list<double> init) {
         if (init.size() != 9)
             throw std::runtime_error("must have exactly 9 elements.");
@@ -130,6 +139,25 @@ public:
 
     // Access operator (const) 
 	double operator()(int i, int j) const { return data[i * 3 + j]; } // row-major order
+
+    // transpose 
+    Matrix33d transpose() const {
+        return Matrix33d(data[0], data[3], data[6],
+                         data[1], data[4], data[7],
+                         data[2], data[5], data[8]);
+    }
+
+    // for a rotation matrix, we care about basis vectors
+    Vector3d get_x_basis() const {
+        return Vector3d(data[0], data[3], data[6]);
+    }
+    Vector3d get_y_basis() const {
+        return Vector3d(data[1], data[4], data[7]);
+    }
+    Vector3d get_z_basis() const {
+        return Vector3d(data[2], data[5], data[8]);
+    }
+    
 
 private:
     double data[9];

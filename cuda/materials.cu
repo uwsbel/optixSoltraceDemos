@@ -87,7 +87,7 @@ extern "C" __global__ void __closesthit__receiver()
 {
     // Retrieve the hit group data and access the parallelogram geometry
     const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryData::Parallelogram& parallelogram = sbt_data->geometry_data.getParallelogram();
+    const GeometryDataST::Rectangle_Flat& rectangle_flat = sbt_data->geometry_data.getRectangle_Flat();
 
     /*
     float3 object_normal = make_float3( __uint_as_float( optixGetAttribute_0() ), __uint_as_float( optixGetAttribute_1() ),
@@ -103,7 +103,7 @@ extern "C" __global__ void __closesthit__receiver()
 
     // Compute the normal of the receiver and dot with ray direction to determine which side was hit
     // TODO: this normal is hard coded based on how the geometry was defined, need to make more robust
-    const float3 receiver_normal = cross(parallelogram.v2, parallelogram.v1);
+    const float3 receiver_normal = cross(rectangle_flat.x, rectangle_flat.y);
     const float dot_product = dot(ray_dir, receiver_normal);
 
     float3 hit_point = ray_orig + ray_t * ray_dir;
@@ -126,7 +126,7 @@ extern "C" __global__ void __closesthit__receiver__cylinder__y()
 {
     // Retrieve the hit group data and access the parallelogram geometry
     const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryData::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
+    const GeometryDataST::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
 
     /*
     float3 object_normal = make_float3( __uint_as_float( optixGetAttribute_0() ), __uint_as_float( optixGetAttribute_1() ),
@@ -193,7 +193,7 @@ extern "C" __global__ void __closesthit__mirror__parabolic()
     // Compute the hit point.
     const float3 hit_point = ray_orig + ray_t * ray_dir;
 
-    // Retrieve per–ray payload.
+    // Retrieve perï¿½ray payload.
     soltrace::PerRayData prd = getPayload();
     const int new_depth = prd.depth + 1; // Increase recursion depth.
 

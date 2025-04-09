@@ -10,14 +10,15 @@
 #define assert(x) /*nop*/
 #endif
 
-struct GeometryData
+struct GeometryDataST
 {
     enum Type
     {
         PARALLELOGRAM         = 0,
 		CYLINDER_Y            = 1,  
 		RECTANGLE_PARABOLIC   = 2,
-        UNKNOWN_TYPE          = 3
+        UNKNOWN_TYPE          = 3,
+        RECTANGLE_FLAT        = 4
     };
 
     struct Parallelogram
@@ -40,6 +41,25 @@ struct GeometryData
         float3 anchor;
     };
 
+    // same as parallelogram, however defined with different attributes
+    struct Rectangle_Flat
+    {
+        Rectangle_Flat() = default;
+        Rectangle_Flat(float3 center, float3 x, float3 y, float width, float height)
+            : center(center), x(x), y(y), width(width), height(height)
+        {
+            float3 normal = normalize( cross( x, y ) );
+            float  d      = dot( normal, center );
+            plane = make_float4( normal, d );
+        }
+
+        float4 plane;
+        float3 center;
+        float3 x;
+        float3 y;
+        float width;
+        float height;
+    };
     
 	struct Cylinder_Y {
 		Cylinder_Y() = default;
@@ -86,7 +106,7 @@ struct GeometryData
         float curv_y;
     };
     
-    GeometryData() {};
+    GeometryDataST() = default;
 
     void setParallelogram( const Parallelogram& p )
     {
@@ -99,6 +119,19 @@ struct GeometryData
     {
         assert( type == PARALLELOGRAM );
         return parallelogram;
+    }
+
+    void setRectangle_Flat(const Rectangle_Flat& r)
+    {
+        assert(type == UNKNOWN_TYPE);
+        type = RECTANGLE_FLAT;
+        rectangle_flat = r;
+    }
+
+    __host__ __device__ const Rectangle_Flat& getRectangle_Flat() const
+    {
+        assert(type == RECTANGLE_FLAT);
+        return rectangle_flat;
     }
 
     void setCylinder_Y(const Cylinder_Y& c)
@@ -136,5 +169,6 @@ struct GeometryData
         Parallelogram parallelogram;
 		Cylinder_Y cylinder_y;
         Rectangle_Parabolic rectangle_parabolic;
+        Rectangle_Flat rectangle_flat;
     };
 };
