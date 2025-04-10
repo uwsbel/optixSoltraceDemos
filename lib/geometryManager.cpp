@@ -82,7 +82,7 @@ static void collectAllAABBVertices(const std::vector<OptixAabb>& aabbs,
 }
 
 // Compute the bounding box of all projected objects onto sun plane
-void geometryManager::compute_sun_plane() {
+void GeometryManager::compute_sun_plane() {
 
     std::vector<soltrace::BoundingBoxVertex> bounding_box_vertices;
     int count = m_aabb_list.size();
@@ -147,7 +147,7 @@ void geometryManager::compute_sun_plane() {
 
 
 // generate aabb list given all the elements 
-void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Element>>& element_list) {
+void GeometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Element>>& element_list) {
 	m_aabb_list.clear(); // Clear the existing AABB list
 
     for (const auto& element : element_list) {
@@ -216,60 +216,6 @@ void geometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
 		m_aabb_list.push_back(aabb);
 	}
 }
-// TODOs: this need to go inside populuate_aabb_list//
-// compute the AABB for a cylinder
-//OptixAabb ComputeCylinderYBound(GeometryData::Cylinder_Y cyl)
-//{
-//    float3 base_z = cyl.base_z;
-//    float3 base_x = cyl.base_x;
-//    float3 center = cyl.center;
-//    float radius = cyl.radius;
-//    float half_height = cyl.half_height;
-//
-//    // Compute the base_y axis (cross product of base_z and base_x)
-//    float3 base_y = normalize(cross(base_z, base_x));
-//
-//    // Local corners of the cylinder in its coordinate system
-//    float3 local_min = { -radius, -half_height, -radius };
-//    float3 local_max = { radius, half_height, radius };
-//
-//    // Eight corners of the cylinder in local coordinates
-//    float3 corners[] = {
-//        make_float3(local_min.x, local_min.y, local_min.z),
-//        make_float3(local_min.x, local_min.y, local_max.z),
-//        make_float3(local_min.x, local_max.y, local_min.z),
-//        make_float3(local_min.x, local_max.y, local_max.z),
-//        make_float3(local_max.x, local_min.y, local_min.z),
-//        make_float3(local_max.x, local_min.y, local_max.z),
-//        make_float3(local_max.x, local_max.y, local_min.z),
-//        make_float3(local_max.x, local_max.y, local_max.z),
-//    };
-//
-//    // Transform corners to world coordinates and find the min/max bounds
-//    float3 global_min = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
-//    float3 global_max = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-//
-//    for (const auto& corner : corners)
-//    {
-//        // Transform the corner from local to global coordinates
-//        float3 world_corner = center
-//            + corner.x * base_x
-//            + corner.y * base_y
-//            + corner.z * base_z;
-//
-//        // Update the global AABB bounds
-//        global_min = fminf(global_min, world_corner);
-//        global_max = fmaxf(global_max, world_corner);
-//    }
-//
-//    printf("Cylinder AABB: (%f, %f, %f) - (%f, %f, %f)\n",
-//        global_min.x, global_min.y, global_min.z,
-//        global_max.x, global_max.y, global_max.z);
-//
-//    // Return the global AABB
-//    return { global_min.x, global_min.y, global_min.z, global_max.x, global_max.y, global_max.z };
-//}
-
 
 // Build a GAS (Geometry Acceleration Structure) for the scene.
 static void buildGas(
@@ -344,7 +290,7 @@ static void buildGas(
     }
 }
 
-void geometryManager::create_geometries() {
+void GeometryManager::create_geometries() {
 
 
 	int obj_count = m_aabb_list.size();

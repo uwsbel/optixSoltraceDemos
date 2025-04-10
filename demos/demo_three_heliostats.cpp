@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     // number of rays launched for the simulation
     int num_rays = 1000000;
     // Create the simulation system.
-    SolTrSystem system(num_rays);
+    SolTraceSystem system(num_rays);
 
     if (stinput) {
         // const char* stinput_file = "../data/stinput/toy_problem_parabolic.stinput"; // Default stinput file name
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
         auto aperture_heliostat = std::make_shared<ApertureRectangle>(dim_x, dim_y);
         e1->set_aperture(aperture_heliostat);
 
-        system.AddElement(e1);
+        system.add_element(e1);
         
         // Element 2
         Vector3d origin_e2(0, 5, 0); // origin of the element
@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
         auto aperture_e2 = std::make_shared<ApertureRectangle>(dim_x, dim_y);
         e2->set_aperture(aperture_heliostat);
 
-        system.AddElement(e2);
+        system.add_element(e2);
 
         //// Element 3
         Vector3d origin_e3(5, 0, 0); // origin of the element
@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
         auto aperture_e3 = std::make_shared<ApertureRectangle>(dim_x, dim_y);
         e3->set_aperture(aperture_heliostat);
 
-        system.AddElement(e3);
+        system.add_element(e3);
 
         Vector3d receiver_origin(0, 0, 10.0); // origin of the receiver
         Vector3d receiver_aim_point(0, 5, 10.0); // aim point of the receiver
@@ -137,14 +137,14 @@ int main(int argc, char* argv[]) {
         ////////////////////////////////////////////
         // STEP 2.4 Add the element to the system //
         ///////////////////////////////////////////
-        system.AddElement(e4); // Add the receiver to the system
+        system.add_element(e4); // Add the receiver to the system
 
         // set up sun vector and angle 
         Vector3d sun_vector(0.0, 0.0, 100.0); // sun vector
         double sun_angle = 0.004; // sun angle
 
-        system.setSunVector(sun_vector);
-        system.setSunAngle(sun_angle);
+        system.set_sun_vector(sun_vector);
+        system.set_sun_angle(sun_angle);
     }
 
     ///////////////////////////////////
@@ -162,17 +162,17 @@ int main(int argc, char* argv[]) {
     // STEP 5  Post process //
     //////////////////////////
     if (parabolic) {
-        system.writeOutput("output_parabolic_heliostats.csv");
+        system.write_output("output_parabolic_heliostats.csv");
     }
     else {
-		system.writeOutput("output_flat_heliostats.csv");
+		system.write_output("output_flat_heliostats.csv");
     }
 
 
     /////////////////////////////////////////
     // STEP 6  Be a good citizen, clean up //
     /////////////////////////////////////////
-    system.cleanup();
+    system.clean_up();
 
 
 

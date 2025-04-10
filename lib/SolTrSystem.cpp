@@ -13,12 +13,12 @@
 // TODO: optix related type should go into one header file
 typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
 
-SolTrSystem::SolTrSystem(int numSunPoints)
+SolTraceSystem::SolTraceSystem(int numSunPoints)
     : m_num_sunpoints(numSunPoints)
 {
     m_verbose = false;
     // TODO: think about m_state again, attach or not attach
-    geometry_manager = std::make_shared<geometryManager>(m_state);
+    geometry_manager = std::make_shared<GeometryManager>(m_state);
     data_manager = std::make_shared<dataManager>();
 
 
@@ -35,11 +35,11 @@ SolTrSystem::SolTrSystem(int numSunPoints)
     pipeline_manager = std::make_shared<pipelineManager>(m_state);
 }
 
-SolTrSystem::~SolTrSystem() {
+SolTraceSystem::~SolTraceSystem() {
     //cleanup();
 }
 
-void SolTrSystem::initialize() {
+void SolTraceSystem::initialize() {
 
 	Vector3d sun_vec = m_sun_vector.normalized(); // normalize the sun vector
 
@@ -64,7 +64,7 @@ void SolTrSystem::initialize() {
     // Pipeline setup.
     pipeline_manager->createPipeline();
 
-    createSBT();
+    create_shader_binding_table();
 
 
     // Initialize launch params
@@ -116,7 +116,7 @@ void SolTrSystem::initialize() {
 
 }
 
-void SolTrSystem::run() {
+void SolTraceSystem::run() {
 
     auto params = data_manager->getDeviceLaunchParams();
     if (!params) {
@@ -140,7 +140,7 @@ void SolTrSystem::run() {
     CUDA_SYNC_CHECK();
 }
 
-bool SolTrSystem::readStinput(const char* filename) {
+bool SolTraceSystem::read_st_input(const char* filename) {
     FILE* fp = fopen(filename, "r");
 	if (!fp)
 	{
@@ -161,7 +161,7 @@ bool SolTrSystem::readStinput(const char* filename) {
     return true;
 }
 
-void SolTrSystem::writeOutput(const std::string& filename) {
+void SolTraceSystem::write_output(const std::string& filename) {
     int output_size = data_manager->host_launch_params.width * data_manager->host_launch_params.height * data_manager->host_launch_params.max_depth;
     std::vector<float4> hp_output_buffer(output_size);
     CUDA_CHECK(cudaMemcpy(hp_output_buffer.data(), data_manager->host_launch_params.hit_point_buffer, output_size * sizeof(float4), cudaMemcpyDeviceToHost));
@@ -220,7 +220,7 @@ void SolTrSystem::writeOutput(const std::string& filename) {
 }
 
 
-void SolTrSystem::cleanup() {
+void SolTraceSystem::clean_up() {
 
 
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -255,7 +255,7 @@ void SolTrSystem::cleanup() {
 // Create and configure the Shader Binding Table (SBT).
 // The SBT is a crucial data structure in OptiX that links geometry and ray types
 // with their corresponding programs (ray generation, miss, and hit group).
-void SolTrSystem::createSBT(){
+void SolTraceSystem::create_shader_binding_table(){
 
 	int obj_count = m_element_list.size();  // Number of objects in the scene (heliostats + receivers)
 
@@ -392,7 +392,7 @@ void SolTrSystem::createSBT(){
     }
 }
 
-void SolTrSystem::AddElement(std::shared_ptr<Element> e)
+void SolTraceSystem::add_element(std::shared_ptr<Element> e)
 {
 
     // update the euler angles for the element
@@ -400,7 +400,7 @@ void SolTrSystem::AddElement(std::shared_ptr<Element> e)
     m_element_list.push_back(e);
 }
 
-std::vector<std::string> SolTrSystem::split(const std::string& str, const std::string& delim, bool ret_empty, bool ret_delim) {
+std::vector<std::string> SolTraceSystem::split(const std::string& str, const std::string& delim, bool ret_empty, bool ret_delim) {
 	
     std::vector<std::string> list;
 
@@ -437,7 +437,7 @@ std::vector<std::string> SolTrSystem::split(const std::string& str, const std::s
 	return list;
 }
 
-void SolTrSystem::read_line(char* buf, int len, FILE* fp) {
+void SolTraceSystem::read_line(char* buf, int len, FILE* fp) {
 	fgets(buf, len, fp);
 	int nch = strlen(buf);
 	if (nch > 0 && buf[nch-1] == '\n')
@@ -446,7 +446,7 @@ void SolTrSystem::read_line(char* buf, int len, FILE* fp) {
 		buf[nch-2] = 0;
 }
 
-bool SolTrSystem::read_sun(FILE* fp) {
+bool SolTraceSystem::read_sun(FILE* fp) {
 	
     if (!fp) return false;
 
@@ -464,8 +464,7 @@ bool SolTrSystem::read_sun(FILE* fp) {
 	cshape = tolower(cshape);
 
     // TODO: Update if supporting other sun shapes
-    //setSunAngle(Sigma * 0.001);
-    setSunAngle(0.0);
+    set_sun_angle(Sigma * 0.001);
 
 	read_line( buf, 1023, fp );
 	double X, Y, Z, Latitude, Day, Hour;
@@ -481,7 +480,7 @@ bool SolTrSystem::read_sun(FILE* fp) {
 	// }
 
     Vector3d sun_vector(X, Y, Z);
-	setSunVector(sun_vector);
+	set_sun_vector(sun_vector);
 
 	printf("sun ps? %d cs: %c  %lg %lg %lg\n", PointSource?1:0, cshape, X, Y, Z);
 
@@ -511,7 +510,7 @@ bool SolTrSystem::read_sun(FILE* fp) {
 	return true;
 }
 
-bool SolTrSystem::read_optic_surface(FILE* fp) {
+bool SolTraceSystem::read_optic_surface(FILE* fp) {
 	
     if (!fp) return false;
 	char buf[1024];
@@ -606,7 +605,7 @@ bool SolTrSystem::read_optic_surface(FILE* fp) {
 	return true;
 }
 
-bool SolTrSystem::read_optic(FILE* fp) {
+bool SolTraceSystem::read_optic(FILE* fp) {
 	if (!fp) return false;
 	char buf[1024];
 	read_line( buf, 1023, fp );
@@ -620,82 +619,112 @@ bool SolTrSystem::read_optic(FILE* fp) {
 	else return false;
 }
 
-bool SolTrSystem::read_element(FILE* fp) {
+bool SolTraceSystem::read_element(FILE* fp) {
 	
     //int ielm = ::st_add_element( cxt, istage );
 
-	char buf[1024];
-	read_line(buf, 1023, fp);
+    char buf[1024];
+    read_line(buf, 1023, fp);
 
-	std::vector<std::string> tok = split( buf, "\t", true, false );
-	if (tok.size() < 29)
-	{
-		printf("too few tokens for element: %d\n", tok.size());
-		printf("\t>> %s\n", buf);
-		return false;
-	}
+    std::vector<std::string> tok = split(buf, "\t", true, false);
+    if (tok.size() < 29)
+    {
+        printf("too few tokens for element: %d\n", tok.size());
+        printf("\t>> %s\n", buf);
+        return false;
+    }
 
-	//st_element_enabled( cxt, istage, ielm,  atoi( tok[0].c_str() ) ? 1 : 0 );
+    if (tok[8][0] == 'c' && tok[17][0] == 'f')
+    {
+        printf("Assuming cylindrical element cap. Skipping element. \n");
+        return true;
+    }
+
+    // st_element_enabled( cxt, istage, ielm,  atoi( tok[0].c_str() ) ? 1 : 0 );
     auto elem = std::make_shared<Element>();
     Vector3d origin(atof(tok[1].c_str()),
                     atof(tok[2].c_str()),
                     atof(tok[3].c_str())); // origin of the element
+    if (tok[8][0] == 'l' && tok[17][0] == 't')
+    {
+        // Cylindrical element, offset y coordinate by radius to center the cylinder
+        origin[1] += 1 / atof(tok[18].c_str()); // tok[18] is 1 / radius
+    }
     Vector3d aim_point(atof(tok[4].c_str()),
                        atof(tok[5].c_str()),
                        atof(tok[6].c_str())); // aim point of the element
+    double zrot = atof(tok[7].c_str());       // z rotation of the element
 
     elem->set_origin(origin);
     elem->set_aim_point(aim_point);
-	elem->set_zrot(atof(tok[7].c_str())); // rotation of the element
+    elem->set_zrot(zrot);
 
-    // st_element_zrot( cxt, istage, ielm,  atof( tok[7].c_str() ) );
-	
     // TODO: Add more aperature and surface types
-    if (!tok[8].empty() && tok[8][0] == 'r') {
+    // Aperatures
+    if (tok[8][0] == 'r')
+    {
         double dim_x = atof(tok[9].c_str());
         double dim_y = atof(tok[10].c_str());
         auto aperture = std::make_shared<ApertureRectangle>(dim_x, dim_y);
         elem->set_aperture(aperture);
     }
-
-    // cylindrical receiver 
-	if (!tok[8].empty() && tok[8][0] == 'l' && tok[17][0] == 't') {
-		double dim_y = atof(tok[11].c_str()); // full height of the cylindrical receiver 
-		//double dim_y = atof(tok[10].c_str());
-		double curv = atof(tok[18].c_str());
-		double dim_x = 1 / curv * 2.0; // diameter of the receiver
-        //receiver_dim_x = 0.5;  // diameter of the receiver
-        //receiver_dim_y = 2.0;  // full height of the cylindrical receiver
-
+    else if (tok[8][0] == 'l' && tok[17][0] == 't')
+    {
+        // In SolTrace STINPUT, this is the Single Axis Curvature Section Type
+        // Used for cylindrical elements. TODO: Update if used elsewhere.
+        double dim_x = 2 * (1 / atof(tok[18].c_str())); // tok[18] is 1 / radius
+        double dim_y = atof(tok[11].c_str());           // Length of the cylinder
         auto aperture = std::make_shared<ApertureRectangle>(dim_x, dim_y);
         elem->set_aperture(aperture);
-		auto surface = std::make_shared<SurfaceCylinder>();
-		elem->set_surface(surface);
-	}
+    }
+    else
+    {
+        // Aperature type not implemented
+        printf("Aperture type not implemented: %s\n", tok[8].c_str());
+        return false;
+    }
 
-
-    if (!tok[17].empty() && tok[17][0] == 'p') {
+    // Surfaces
+    if (tok[17][0] == 'p')
+    {
         double curv_x = atof(tok[18].c_str());
         double curv_y = atof(tok[19].c_str());
         auto surface = std::make_shared<SurfaceParabolic>();
         surface->set_curvature(curv_x, curv_y);
         elem->set_surface(surface);
-	}
-	else if (!tok[17].empty() && tok[17][0] == 'f') {
-        // Create a flat surface if not parabolic
+    }
+    else if (tok[8][0] == 'l' && tok[17][0] == 't')
+    {
+        // In SolTrace STINPUT, this is the Cylindrical Type
+        // Used for cylindrical elements.
+        double radius = 1 / atof(tok[18].c_str()); // tok[18] is 1 / radius
+        double half_height = atof(tok[11].c_str()) / 2;
+        auto surface = std::make_shared<SurfaceCylinder>();
+        surface->set_radius(radius);
+        surface->set_half_height(half_height);
+        elem->set_surface(surface);
+    }
+    else if (tok[17][0] == 'f')
+    {
         auto surface = std::make_shared<SurfaceFlat>();
         elem->set_surface(surface);
     }
-	
-	// st_element_optic( cxt, istage, ielm,  tok[27].c_str() );
-	// st_element_interaction( cxt, istage, ielm,  atoi( tok[28].c_str()) );
+    else
+    {
+        // Surface type not implemented
+        printf("Surface type not implemented: %s\n", tok[17].c_str());
+        return false;
+    }
 
-    AddElement(elem); // Add the element to the system
+    // st_element_optic( cxt, istage, ielm,  tok[27].c_str() );
+    // st_element_interaction( cxt, istage, ielm,  atoi( tok[28].c_str()) );
 
-	return true;
+    add_element(elem); // Add the element to the system
+
+    return true;
 }
 
-bool SolTrSystem::read_stage(FILE* fp) {
+bool SolTraceSystem::read_stage(FILE* fp) {
 	
     if (!fp) return false;
 
@@ -727,7 +756,7 @@ bool SolTrSystem::read_stage(FILE* fp) {
 	return true;
 }
 
-bool SolTrSystem::read_system(FILE* fp) {
+bool SolTraceSystem::read_system(FILE* fp) {
 	
     if (!fp) return false;
 

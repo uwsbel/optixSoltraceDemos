@@ -17,10 +17,10 @@ int main(int argc, char* argv[]) {
     std::cout << "Starting ST_System simulation with " << num_rays << " sun points..." << std::endl;
 
     // Create the simulation system instance.
-    SolTrSystem system(num_rays);
+    SolTraceSystem system(num_rays);
 
 	Vector3d sun_vector(0, 0, 1.); // sun vector
-	system.setSunVector(sun_vector); // Set the sun vector
+	system.set_sun_vector(sun_vector); // Set the sun vector
 
     double curv_x = 0.05;
     double curv_y = 0.05;
@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
 
     auto aperture = std::make_shared<ApertureRectangle>(dim_x, dim_y);
     e1->set_aperture(aperture);
-	system.AddElement(e1); // Add the element to the system
+	system.add_element(e1); // Add the element to the system
 
     ///////////////////////////////////
     // Add receiver the last for now //
@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
 	auto receiver_surface = std::make_shared<SurfaceFlat>();
 	e2->set_surface(receiver_surface);
 
-	system.AddElement(e2); // Add the receiver to the system
+	system.add_element(e2); // Add the receiver to the system
 
     //Initialize the simulation
     system.initialize();
@@ -104,10 +104,10 @@ int main(int argc, char* argv[]) {
             break;
 
     }
-	system.writeOutput(filename);
+	system.write_output(filename);
 
     // Clean up all allocated resources.
-    system.cleanup();
+    system.clean_up();
 
     std::cout << "Simulation completed successfully." << std::endl;
 

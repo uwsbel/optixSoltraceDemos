@@ -22,8 +22,6 @@
 #include <lib/Element.h>
 #include <optix_types.h>
 
-//TODO: shall I use float3 at the interface level? 
-
 
 using namespace soltrace;
 
@@ -32,10 +30,10 @@ using namespace soltrace;
  * @brief Given the geoemtry of the elements, populate the list of aabb, 
  * compute the sun plane, and build the GAS (Geometry Acceleration Structure) for ray tracing.
  */
-class geometryManager {
+class GeometryManager {
 public:
-	geometryManager(SoltraceState& state) : m_state(state) {}
-    ~geometryManager() {} 
+	GeometryManager(SoltraceState& state) : m_state(state) {}
+    ~GeometryManager() {} 
 
 	/// populate the AABB list from the elements
     void populate_aabb_list(const std::vector<std::shared_ptr<Element>>& element_list);
@@ -58,7 +56,7 @@ private:
 };
 
 /**
- * @class SolTrSystem
+ * @class SolTraceSystem
  * @brief Main simulation object to: 
  * - build the scene from the elements (heliostats and receiver)
  * - set sun vector and sun points
@@ -66,10 +64,10 @@ private:
  * - run ray tracing simulation 
  * - and output results
  */
-class SolTrSystem {
+class SolTraceSystem {
 public:
-    SolTrSystem(int numSunPoints);
-    ~SolTrSystem();
+    SolTraceSystem(int numSunPoints);
+    ~SolTraceSystem();
 
     /// Call to this function mark the completion of the simulation setup
     void initialize();
@@ -78,28 +76,28 @@ public:
     void run();
 
     // Read a stinput file for the simulation setup.
-    bool readStinput(const char* filename);
+    bool read_st_input(const char* filename);
 
     // Write the output to a file.
-    void writeOutput(const std::string& filename); 
+    void write_output(const std::string& filename); 
 
     /// Explicit cleanup
-    void cleanup();
+    void clean_up();
 
-	void setVerbose(bool verbose) { m_verbose = verbose; } // Set verbosity for debugging
+	void set_verbose(bool verbose) { m_verbose = verbose; } // Set verbosity for debugging
 	/// <summary>
 	/// set the number of rays launched
 	/// </summary>
 	/// <param name="numSunPoints"></param>
-	void setSunPoints(int num) { m_num_sunpoints = num; } 
+	void set_sun_points(int num) { m_num_sunpoints = num; } 
 
 	/// <summary>
 	/// set normalized sun vector
 	/// </summary>
 	/// <param name="sunVector"></param>
-	void setSunVector(Vector3d vect) { m_sun_vector = vect; } // Set the sun vector
+	void set_sun_vector(Vector3d vect) { m_sun_vector = vect; } // Set the sun vector
 
-	void setSunAngle(double angle) { m_sun_angle = angle; } // Set the sun angle
+	void set_sun_angle(double angle) { m_sun_angle = angle; } // Set the sun angle
 
 
 	/// <summary>
@@ -122,12 +120,12 @@ public:
 	/// <summary>
 	/// add element
 	/// /// </summary>
-    void AddElement(std::shared_ptr<Element> element);
+    void add_element(std::shared_ptr<Element> element);
 
 
 private:
 
-    std::shared_ptr<geometryManager> geometry_manager;
+    std::shared_ptr<GeometryManager> geometry_manager;
     std::shared_ptr<pipelineManager> pipeline_manager;
     std::shared_ptr<dataManager>     data_manager;
 
@@ -140,7 +138,7 @@ private:
 
     std::vector<std::shared_ptr<Element>> m_element_list;
 
-    void createSBT();
+    void create_shader_binding_table();
 
     // Helper functions to read a stinput file
     bool read_system(FILE* fp);
