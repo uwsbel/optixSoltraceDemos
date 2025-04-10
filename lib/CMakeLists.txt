@@ -1,10 +1,10 @@
 # Add the geometry implementation
 add_library(geometry STATIC
-    geometryManager.cpp
-    dataManager.cpp
-    pipelineManager.cpp
-    SolTrSystem.cpp
-    Aperture.cpp
+    geometry_manager.cpp
+    data_manager.cpp
+    pipeline_manager.cpp
+    soltrace_system.cpp
+    aperture.cpp
     element.cpp
 )
 

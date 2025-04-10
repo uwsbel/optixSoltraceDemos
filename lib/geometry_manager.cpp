@@ -1,8 +1,8 @@
-#include "SolTrSystem.h"
+#include "soltrace_system.h"
 #include <cfloat> 
 #include <cuda/GeometryDataST.h>
 #include <cuda/Soltrace.h>
-#include <SoltraceState.h>
+#include <soltrace_state.h>
 #include <optix.h>
 #include <vector>
 

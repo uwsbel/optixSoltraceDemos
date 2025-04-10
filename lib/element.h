@@ -4,11 +4,11 @@
 #include <cstdint>
 #include <string>
 
-#include "Vector3d.h"
-#include "SoltraceType.h"
-#include "Surface.h"
-#include "Aperture.h"
-#include "mathUtil.h"
+#include "vector3d.h"
+#include "soltrace_type.h"
+#include "surface.h"
+#include "aperture.h"
+#include "math_util.h"
 #include "cuda/GeometryDataST.h"
 
 class Aperture;

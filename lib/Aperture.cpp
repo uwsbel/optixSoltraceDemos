@@ -1,5 +1,5 @@
-#include "Aperture.h"
-#include "mathUtil.h"
+#include "aperture.h"
+#include "math_util.h"
 #include "element.h"
 #include <optix.h>
 #include <vector_types.h>

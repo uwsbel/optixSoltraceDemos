@@ -1,12 +1,12 @@
-#include "SolTrSystem.h"
-#include "dataManager.h"
+#include "soltrace_system.h"
+#include "data_manager.h"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <chrono>
 #include <iostream>
 #include <iomanip>
-#include "dataManager.h"
+#include "data_manager.h"
 
 dataManager::dataManager() : device_launch_params(nullptr) { 
 	

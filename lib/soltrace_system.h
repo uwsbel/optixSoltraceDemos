@@ -6,7 +6,7 @@
 #include <cuda_runtime.h>
 #include <optix.h>
 #include <sutil/vec_math.h>
-#include <SoltraceState.h>
+#include <soltrace_state.h>
 #include <sampleConfig.h>
 #include <optix.h>
 #include <optix_stack_size.h>
@@ -17,9 +17,10 @@
 #include <sutil/sutil.h>
 #include <sutil/vec_math.h>
 #include <cuda/Soltrace.h>
-#include <lib/dataManager.h>
-#include <lib/pipelineManager.h>
-#include <lib/Element.h>
+#include <lib/data_manager.h>
+#include <lib/pipeline_manager.h>
+#include <lib/element.h>
+#include <lib/timer.h>
 #include <optix_types.h>
 
 
@@ -122,6 +123,9 @@ public:
 	/// /// </summary>
     void add_element(std::shared_ptr<Element> element);
 
+    double get_time_trace();
+	double get_time_setup();
+
 
 private:
 
@@ -137,7 +141,6 @@ private:
     SoltraceState m_state;
 
     std::vector<std::shared_ptr<Element>> m_element_list;
-
     void create_shader_binding_table();
 
     // Helper functions to read a stinput file
@@ -149,6 +152,10 @@ private:
     bool read_sun(FILE* fp);
     void read_line(char* buf, int len, FILE* fp);
     std::vector<std::string> split(const std::string& str, const std::string& delim, bool ret_empty, bool ret_delim);
+
+	Timer m_timer_setup;
+    Timer m_timer_trace;
+
 
 };
 

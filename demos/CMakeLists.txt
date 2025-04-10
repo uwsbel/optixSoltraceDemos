@@ -4,8 +4,8 @@
 
 set(DEMOS
      demo_three_heliostats
-     demo_refactor_test
-     demo_parabolic_surface
+     demo_large_scene
+#     demo_parabolic_surface
 )
 
 message(STATUS "Adding demo programs for OptiX SolTrace ...")

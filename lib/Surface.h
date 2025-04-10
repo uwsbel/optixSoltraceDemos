@@ -1,8 +1,8 @@
 #ifndef SOLTRACE_SURFACE_H
 #define SOLTRACE_SURFACE_H
 
-#include "SoltraceType.h"    // For SurfaceType enum
-#include "Vector3d.h"
+#include "soltrace_type.h"    // For SurfaceType enum
+#include "vector3d.h"
 
 
 /**

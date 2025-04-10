@@ -2,7 +2,7 @@
 #ifndef SOLTRACE_APERTURE_H
 #define SOLTRACE_APERTURE_H
 
-#include "SoltraceType.h"  // For ApertureType enum
+#include "soltrace_type.h"  // For ApertureType enum
 #include <optix.h>
 #include <vector_types.h>
 

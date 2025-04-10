@@ -1,13 +1,13 @@
-#include "SolTrSystem.h"
-#include "dataManager.h"
+#include "soltrace_system.h"
+#include "data_manager.h"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <chrono>
 #include <iostream>
 #include <iomanip>
-#include <SoltraceType.h>
-#include <Element.h>
+#include <soltrace_type.h>
+#include <element.h>
 
 
 // TODO: optix related type should go into one header file
@@ -40,6 +40,8 @@ SolTraceSystem::~SolTraceSystem() {
 }
 
 void SolTraceSystem::initialize() {
+
+    m_timer_setup.start();
 
 	Vector3d sun_vec = m_sun_vector.normalized(); // normalize the sun vector
 
@@ -113,6 +115,7 @@ void SolTraceSystem::initialize() {
 
     // TODO: this is redundant but put here for now. need to separate optix and non-optix related members
     m_state.params = data_manager->host_launch_params;
+    m_timer_setup.stop();
 
 }
 
@@ -127,6 +130,7 @@ void SolTraceSystem::run() {
     int width = data_manager->host_launch_params.width;
     int height = data_manager->host_launch_params.height;
 
+    m_timer_trace.start();
     // Launch the simulation.
     OPTIX_CHECK(optixLaunch(
         m_state.pipeline,
@@ -138,6 +142,8 @@ void SolTraceSystem::run() {
         height,
         1));
     CUDA_SYNC_CHECK();
+
+	m_timer_trace.stop();
 }
 
 bool SolTraceSystem::read_st_input(const char* filename) {
@@ -399,6 +405,15 @@ void SolTraceSystem::add_element(std::shared_ptr<Element> e)
     e->update_euler_angles();
     m_element_list.push_back(e);
 }
+
+double SolTraceSystem::get_time_trace() {
+    return m_timer_trace.get_time_sec();
+} 
+
+double SolTraceSystem::get_time_setup() {
+	return m_timer_setup.get_time_sec();
+}
+
 
 std::vector<std::string> SolTraceSystem::split(const std::string& str, const std::string& delim, bool ret_empty, bool ret_delim) {
 	

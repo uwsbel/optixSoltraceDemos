@@ -11,10 +11,10 @@
 #include <sutil/sutil.h>
 
 #include <cuda/Soltrace.h>
-#include <lib/dataManager.h>
+#include <lib/data_manager.h>
 
-#include <SoltraceState.h>
-#include <lib/pipelineManager.h>
+#include <soltrace_state.h>
+#include <lib/pipeline_manager.h>
 #include <fstream>
 
 
