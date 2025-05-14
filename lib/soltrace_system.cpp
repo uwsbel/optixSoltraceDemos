@@ -46,13 +46,9 @@ void SolTraceSystem::initialize() {
 
 	Vector3d sun_vec = m_sun_vector.normalized(); // normalize the sun vector
 
-    // initialize soltrace state variable 
-    m_state.params.sun_vector = make_float3(sun_vec[0], sun_vec[1], sun_vec[2]);
-    m_state.params.max_sun_angle = m_sun_angle;
-
     // set up input related to sun
-    data_manager->host_launch_params.sun_vector = m_state.params.sun_vector;
-    data_manager->host_launch_params.max_sun_angle = m_state.params.max_sun_angle;
+    data_manager->launch_params_H.sun_vector = make_float3(sun_vec[0], sun_vec[1], sun_vec[2]);
+    data_manager->launch_params_H.max_sun_angle = m_sun_angle;
 
     Timer aabb_timer;
 	aabb_timer.start();
@@ -66,7 +62,7 @@ void SolTraceSystem::initialize() {
     sun_timer.start();
 
     // compute sun plane vertices
-    geometry_manager->compute_sun_plane();
+    geometry_manager->compute_sun_plane(data_manager->launch_params_H);
 
     sun_timer.stop();
 	std::cout << "Time to compute sun plane: " << sun_timer.get_time_sec() << " seconds" << std::endl;
@@ -86,7 +82,9 @@ void SolTraceSystem::initialize() {
     pipeline_timer.stop();
 	std::cout << "Time to create pipeline: " << pipeline_timer.get_time_sec() << " seconds" << std::endl;
     
-    
+    // create the geometry data array
+	data_manager->allocateGeometryDataArray(m_element_list);
+
 	Timer sbt_timer;
 	sbt_timer.start();
     create_shader_binding_table();
@@ -94,53 +92,46 @@ void SolTraceSystem::initialize() {
 	std::cout << "Time to create SBT: " << sbt_timer.get_time_sec() << " seconds" << std::endl;
 
     // Initialize launch params
-    data_manager->host_launch_params.width = m_num_sunpoints;
-    data_manager->host_launch_params.height = 1;
-    data_manager->host_launch_params.max_depth = MAX_TRACE_DEPTH;
+    data_manager->launch_params_H.width = m_num_sunpoints;
+    data_manager->launch_params_H.height = 1;
+    data_manager->launch_params_H.max_depth = MAX_TRACE_DEPTH;
 
     // Allocate memory for the hit point buffer, size is number of rays launched * depth
     // TODO: why is this float4? 
-    const size_t hit_point_buffer_size = data_manager->host_launch_params.width * data_manager->host_launch_params.height * sizeof(float4) * data_manager->host_launch_params.max_depth;
+    const size_t hit_point_buffer_size = data_manager->launch_params_H.width * data_manager->launch_params_H.height * sizeof(float4) * data_manager->launch_params_H.max_depth;
 
     CUDA_CHECK(cudaMalloc(
-        reinterpret_cast<void**>(&data_manager->host_launch_params.hit_point_buffer),
+        reinterpret_cast<void**>(&data_manager->launch_params_H.hit_point_buffer),
         hit_point_buffer_size
     ));
-    CUDA_CHECK(cudaMemset(data_manager->host_launch_params.hit_point_buffer, 0, hit_point_buffer_size));
+    CUDA_CHECK(cudaMemset(data_manager->launch_params_H.hit_point_buffer, 0, hit_point_buffer_size));
 
     // Create a CUDA stream for asynchronous operations.
     CUDA_CHECK(cudaStreamCreate(&m_state.stream));
 
     // TODO: need to get rid of the m_state.params 
     // Link the GAS handle.
-    data_manager->host_launch_params.handle = m_state.gas_handle;
-	// now copy sun_v0, sun_v1, sun_v2, sun_v3 to launch params
-	data_manager->host_launch_params.sun_v0 = m_state.params.sun_v0;
-	data_manager->host_launch_params.sun_v1 = m_state.params.sun_v1;
-	data_manager->host_launch_params.sun_v2 = m_state.params.sun_v2;
-	data_manager->host_launch_params.sun_v3 = m_state.params.sun_v3;
+    data_manager->launch_params_H.handle = m_state.gas_handle;
 
     // print all the field in the launch params
     if (m_verbose) {
         std::cout << "print launch params: " << std::endl;
-        std::cout << "width: " << data_manager->host_launch_params.width << std::endl;
-        std::cout << "height: " << data_manager->host_launch_params.height << std::endl;
-        std::cout << "max_depth: " << data_manager->host_launch_params.max_depth << std::endl;
-        std::cout << "hit_point_buffer: " << data_manager->host_launch_params.hit_point_buffer << std::endl;
-        std::cout << "sun_vector: " << data_manager->host_launch_params.sun_vector.x << " " << data_manager->host_launch_params.sun_vector.y << " " << data_manager->host_launch_params.sun_vector.z << std::endl;
-        std::cout << "max_sun_angle: " << data_manager->host_launch_params.max_sun_angle << std::endl;
-        std::cout << "sun_v0: " << data_manager->host_launch_params.sun_v0.x << " " << data_manager->host_launch_params.sun_v0.y << " " << data_manager->host_launch_params.sun_v0.z << std::endl;
-        std::cout << "sun_v1: " << data_manager->host_launch_params.sun_v1.x << " " << data_manager->host_launch_params.sun_v1.y << " " << data_manager->host_launch_params.sun_v1.z << std::endl;
-        std::cout << "sun_v2: " << data_manager->host_launch_params.sun_v2.x << " " << data_manager->host_launch_params.sun_v2.y << " " << data_manager->host_launch_params.sun_v2.z << std::endl;
-        std::cout << "sun_v3: " << data_manager->host_launch_params.sun_v3.x << " " << data_manager->host_launch_params.sun_v3.y << " " << data_manager->host_launch_params.sun_v3.z << std::endl;
+        std::cout << "width: " << data_manager->launch_params_H.width << std::endl;
+        std::cout << "height: " << data_manager->launch_params_H.height << std::endl;
+        std::cout << "max_depth: " << data_manager->launch_params_H.max_depth << std::endl;
+        std::cout << "hit_point_buffer: " << data_manager->launch_params_H.hit_point_buffer << std::endl;
+        std::cout << "sun_vector: " << data_manager->launch_params_H.sun_vector.x << " " << data_manager->launch_params_H.sun_vector.y << " " << data_manager->launch_params_H.sun_vector.z << std::endl;
+        std::cout << "max_sun_angle: " << data_manager->launch_params_H.max_sun_angle << std::endl;
+        std::cout << "sun_v0: " << data_manager->launch_params_H.sun_v0.x << " " << data_manager->launch_params_H.sun_v0.y << " " << data_manager->launch_params_H.sun_v0.z << std::endl;
+        std::cout << "sun_v1: " << data_manager->launch_params_H.sun_v1.x << " " << data_manager->launch_params_H.sun_v1.y << " " << data_manager->launch_params_H.sun_v1.z << std::endl;
+        std::cout << "sun_v2: " << data_manager->launch_params_H.sun_v2.x << " " << data_manager->launch_params_H.sun_v2.y << " " << data_manager->launch_params_H.sun_v2.z << std::endl;
+        std::cout << "sun_v3: " << data_manager->launch_params_H.sun_v3.x << " " << data_manager->launch_params_H.sun_v3.y << " " << data_manager->launch_params_H.sun_v3.z << std::endl;
     }
 
     // copy launch params to device
     data_manager->allocateLaunchParams();
     data_manager->updateLaunchParams();
 
-    // TODO: this is redundant but put here for now. need to separate optix and non-optix related members
-    m_state.params = data_manager->host_launch_params;
     m_timer_setup.stop();
 
 }
@@ -153,8 +144,8 @@ void SolTraceSystem::run() {
         return;
     }
 
-    int width = data_manager->host_launch_params.width;
-    int height = data_manager->host_launch_params.height;
+    int width = data_manager->launch_params_H.width;
+    int height = data_manager->launch_params_H.height;
 
 
     size_t m_mem_free_after;
@@ -202,9 +193,9 @@ bool SolTraceSystem::read_st_input(const char* filename) {
 }
 
 void SolTraceSystem::write_output(const std::string& filename) {
-    int output_size = data_manager->host_launch_params.width * data_manager->host_launch_params.height * data_manager->host_launch_params.max_depth;
+    int output_size = data_manager->launch_params_H.width * data_manager->launch_params_H.height * data_manager->launch_params_H.max_depth;
     std::vector<float4> hp_output_buffer(output_size);
-    CUDA_CHECK(cudaMemcpy(hp_output_buffer.data(), data_manager->host_launch_params.hit_point_buffer, output_size * sizeof(float4), cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(hp_output_buffer.data(), data_manager->launch_params_H.hit_point_buffer, output_size * sizeof(float4), cudaMemcpyDeviceToHost));
 
     std::ofstream outFile(filename);
 
@@ -231,7 +222,7 @@ void SolTraceSystem::write_output(const std::string& filename) {
         }
 
         // If we haven't reached max_trace stages for the current ray, print the element.
-        if (stage < data_manager->host_launch_params.max_depth) {
+        if (stage < data_manager->launch_params_H.max_depth) {
             outFile << currentRay << ","
                 << element.x << "," << element.y << ","
                 << element.z << "," << element.w << "\n";
@@ -284,8 +275,8 @@ void SolTraceSystem::clean_up() {
     CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.d_gas_output_buffer)));
 
     // Free device-side launch parameter memory
-    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.params.hit_point_buffer)));
-    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(m_state.d_params)));
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(data_manager->launch_params_H.hit_point_buffer)));
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(data_manager->launch_params_D)));
 
     data_manager->cleanup();
 
@@ -381,7 +372,7 @@ void SolTraceSystem::create_shader_binding_table(){
             OPTIX_CHECK(optixSbtRecordPackHeader(pipeline_manager->getMirrorProgram(map), 
                                                  &hitgroup_records_list[sbt_idx]));
             // assign geometry data to the corresponding hitgroup record 
-            hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
+            //hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
             hitgroup_records_list[sbt_idx].data.material_data.mirror = {
                                                  0.875425f, // Reflectivity.
                                                  0.0f,  // Transmissivity.
@@ -399,7 +390,7 @@ void SolTraceSystem::create_shader_binding_table(){
             OPTIX_CHECK(optixSbtRecordPackHeader(
                 pipeline_manager->getReceiverProgram(surface_type),
                 &hitgroup_records_list[sbt_idx]));
-            hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
+            //hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
             hitgroup_records_list[sbt_idx].data.material_data.receiver = {
                 0.95f, // Reflectivity.
                 0.0f,  // Transmissivity.

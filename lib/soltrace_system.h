@@ -42,7 +42,7 @@ public:
     /// compute the sun plane with sun vector and a list of AABBs 
     // TODO: need to think about who owns this, pipeline? 
     // TODO: create sun class
-    void compute_sun_plane();
+    void compute_sun_plane(LaunchParams& params);
 
 	/// build the GAS (Geometry Acceleration Structure) using the AABB list, populate optix state
     void create_geometries();

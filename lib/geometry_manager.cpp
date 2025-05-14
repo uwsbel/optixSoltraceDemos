@@ -19,21 +19,21 @@
 
 // PRE-PROCESSING SCENE GEOMETRY AND SUN DEFINITION
 // Compute the sun's coordinate frame
-static void computeSunFrame(SoltraceState& state, float3& sun_u, float3& sun_v) {
-    float3 sun_vector_hat = normalize(state.params.sun_vector);
-    float3 axis = (abs(state.params.sun_vector.x) < 0.9f) ? make_float3(1.0f, 0.0f, 0.0f) : make_float3(0.0f, 1.0f, 0.0f);
+static void computeSunFrame(SoltraceState& state, float3 sun_vector, float3& sun_u, float3& sun_v) {
+    float3 axis = (abs(sun_vector.x) < 0.9f) ? make_float3(1.0f, 0.0f, 0.0f) : make_float3(0.0f, 1.0f, 0.0f);
     // TODO: cross need to follow left
-    sun_u = normalize(cross(axis, sun_vector_hat));
-    sun_v = normalize(cross(sun_vector_hat, sun_u));
+    sun_u = normalize(cross(axis, sun_vector));
+    sun_v = normalize(cross(sun_vector, sun_u));
 }
 
 // Find the distance to the closest object along the sun vector
-static float computeSunPlaneDistance(SoltraceState& state, std::vector<soltrace::BoundingBoxVertex>& bounding_box_vertices) {
-    float3 sun_vector_hat = normalize(state.params.sun_vector);
+static float computeSunPlaneDistance(SoltraceState& state, 
+                                     float3 sun_vector, 
+                                     std::vector<soltrace::BoundingBoxVertex>& bounding_box_vertices) {
     // Max distance from Origin along sun vector
     float max_distance = 0.0f;
     for (auto& vertex : bounding_box_vertices) {
-        float distance = abs(dot(vertex.point, sun_vector_hat));
+        float distance = abs(dot(vertex.point, sun_vector));
         vertex.distance = distance;
         if (distance > max_distance) {
             max_distance = distance;
@@ -43,10 +43,9 @@ static float computeSunPlaneDistance(SoltraceState& state, std::vector<soltrace:
 }
 
 // Project a point onto the plane at distance d along the sun vector
-static float3 projectOntoPlaneAtDistance(SoltraceState& state, const float3& point, float d) {
-    float3 sun_vector_hat = normalize(state.params.sun_vector);
-    float3 plane_center = d * sun_vector_hat;
-    return point - dot(point - plane_center, sun_vector_hat) * sun_vector_hat;
+static float3 projectOntoPlaneAtDistance(SoltraceState& state, float3& sun_vector, const float3& point, float d) {
+    float3 plane_center = d * sun_vector;
+    return point - dot(point - plane_center, sun_vector) * sun_vector;
 }
 
 // Function to compute all 8 vertices of an AABB
@@ -82,7 +81,7 @@ static void collectAllAABBVertices(const std::vector<OptixAabb>& aabbs,
 }
 
 // Compute the bounding box of all projected objects onto sun plane
-void GeometryManager::compute_sun_plane() {
+void GeometryManager::compute_sun_plane(LaunchParams& params) {
 
     std::vector<soltrace::BoundingBoxVertex> bounding_box_vertices;
     int count = m_aabb_list.size();
@@ -92,18 +91,18 @@ void GeometryManager::compute_sun_plane() {
     collectAllAABBVertices(m_aabb_list, bounding_box_vertices);
 
 
-    float d = computeSunPlaneDistance(m_state, bounding_box_vertices);
+    float d = computeSunPlaneDistance(m_state, params.sun_vector, bounding_box_vertices);
 
     float3 sun_u, sun_v;
-    computeSunFrame(m_state, sun_u, sun_v);
+    computeSunFrame(m_state, params.sun_vector, sun_u, sun_v);
 
     // Project points onto the sun plane
     std::vector<soltrace::ProjectedPoint> projected_points;
     for (const auto& vertex : bounding_box_vertices) {
         // Compute the buffer for this point
-        float buffer = vertex.distance * tan(m_state.params.max_sun_angle);
+        float buffer = vertex.distance * tan(params.max_sun_angle);
         // Project the point onto the sun plane
-        float3 projected_point = projectOntoPlaneAtDistance(m_state, vertex.point, d);
+        float3 projected_point = projectOntoPlaneAtDistance(m_state, params.sun_vector, vertex.point, d);
         float u = dot(projected_point, sun_u);
         float v = dot(projected_point, sun_v);
         soltrace::ProjectedPoint projected_point_uv = { buffer, make_float2(u, v) };
@@ -135,14 +134,14 @@ void GeometryManager::compute_sun_plane() {
     // Transform sun bounding box vertices to global frame
     std::vector<float3> sun_bounds_global_frame;
     for (const auto& vertex : sun_bounds_sun_frame) {
-        float3 global_vertex = vertex.x * sun_u + vertex.y * sun_v + d * normalize(m_state.params.sun_vector);
+        float3 global_vertex = vertex.x * sun_u + vertex.y * sun_v + d * normalize(params.sun_vector);
         sun_bounds_global_frame.push_back(global_vertex);
     }
 
-    m_state.params.sun_v0 = sun_bounds_global_frame[0];   // bottom-left
-    m_state.params.sun_v1 = sun_bounds_global_frame[1];   // bottom-right
-    m_state.params.sun_v2 = sun_bounds_global_frame[2];   // top-right
-    m_state.params.sun_v3 = sun_bounds_global_frame[3];   // top-left
+    params.sun_v0 = sun_bounds_global_frame[0];   // bottom-left
+    params.sun_v1 = sun_bounds_global_frame[1];   // bottom-right
+    params.sun_v2 = sun_bounds_global_frame[2];   // top-right
+    params.sun_v3 = sun_bounds_global_frame[3];   // top-left
 }
 
 

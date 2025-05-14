@@ -3,6 +3,7 @@
 #define DATAMANAGER_H
 
 #include <cuda/Soltrace.h>
+#include <lib/element.h>
 
 using namespace soltrace;
 
@@ -13,10 +14,15 @@ class dataManager {
 public:
     // TODO: move this to private member for best practice 
     // Host copy of launch parameters.
-    soltrace::LaunchParams host_launch_params;
+    soltrace::LaunchParams launch_params_H;
     // Device pointer to launch parameters.
-    soltrace::LaunchParams* device_launch_params;
+    soltrace::LaunchParams* launch_params_D;
 
+	std::vector<GeometryDataST> geometry_data_array_H; // host-side, geometry data
+	// device pointer to geometry data
+    GeometryDataST* geometry_data_array_D;
+
+    float4* d_hit_point_buffer;
     dataManager();
     ~dataManager();
 
@@ -26,8 +32,12 @@ public:
 
     void allocateLaunchParams();
 
-	// todo : might need a different name to indicate that this function is copying the host launch params to the device 
     void updateLaunchParams();
+
+    // populate geometry_data_array_H from the element list
+	// create geometry_data_array_D on the device
+	// then launch_params_D.geometry_data_array = geometry_data_array_D gets a copy!
+	void allocateGeometryDataArray(const std::vector<std::shared_ptr<Element>> element_list);
 };
 
 #endif  // DATAMANAGER_H

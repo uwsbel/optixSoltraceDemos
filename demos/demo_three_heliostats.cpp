@@ -7,7 +7,7 @@
 
 
 int main(int argc, char* argv[]) {
-    bool stinput = true; // Set to true if using stinput file, false otherwise
+    bool stinput = false; // Set to true if using stinput file, false otherwise
     bool parabolic = true; // Set to true for parabolic mirrors, false for flat mirrors
     bool use_cylindical = true;
     // number of rays launched for the simulation

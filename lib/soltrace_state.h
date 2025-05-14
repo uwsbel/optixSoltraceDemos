@@ -21,7 +21,6 @@ struct SoltraceState
 
     OptixProgramGroup           raygen_prog_group               = 0;
     OptixProgramGroup           radiance_miss_prog_group        = 0;
-    //OptixProgramGroup           radiance_mirror_prog_group      = 0;
     OptixProgramGroup           radiance_receiver_prog_group    = 0;
 
     OptixPipeline               pipeline                        = 0;
@@ -29,8 +28,9 @@ struct SoltraceState
 
     CUstream                    stream                          = 0;
     
-    soltrace::LaunchParams      params;
-    soltrace::LaunchParams*     d_params                        = nullptr;
+ //   soltrace::LaunchParams*     d_params                        = nullptr;
+	//GeometryDataST*             d_geometry_data_array           = nullptr;
+	//float4*                     d_hit_point_buffer              = nullptr;
 
     OptixShaderBindingTable     sbt                             = {};
 };
