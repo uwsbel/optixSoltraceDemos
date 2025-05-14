@@ -33,7 +33,6 @@ int main(int argc, char* argv[]) {
 		stinput_file = "../data/stinput/large-system-flat-heliostats-cylindrical.stinput"; // Default stinput file name
     }
 
-    std::cout << "Reading STINPUT file." << std::endl;
     system.read_st_input(stinput_file);
 
     // set up sun angle 
@@ -47,9 +46,12 @@ int main(int argc, char* argv[]) {
 
     system.run();
 
-	std::cout << "timing_setup_scene, " << system.get_time_setup() << " sec" << std::endl;
-	std::cout << "timing_ray_trace,   " << system.get_time_trace() << " sec" << std::endl;
-    //system.write_output("output_large_system_flat_heliostats_cylindrical_receiver_stinput-sun_shape_on.csv");
+    if (parabolic) { std::cout << "parabolic, "; }
+	else { std::cout << "flat, "; }
+
+
+	std::cout << "num_rays, " << num_rays << ", timing_setup, " << system.get_time_setup() << ", timing_trace, " << system.get_time_trace() << std::endl;
+    system.write_output("output_large_system_flat_heliostats_cylindrical_receiver_stinput-sun_shape_on.csv");
 
     system.clean_up();
 

@@ -52,7 +52,6 @@ void pipelineManager::cleanup() {
 
     // destroy all program groups 
     for (auto& prog_group : m_program_groups) {
-		std::cout << "program group size " << m_program_groups.size() << std::endl;
         OPTIX_CHECK(optixProgramGroupDestroy(prog_group));
     }
 

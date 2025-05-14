@@ -121,10 +121,10 @@ void GeometryManager::compute_sun_plane() {
         v_min = fminf(v_min, point.point.y - point.buffer);
         v_max = fmaxf(v_max, point.point.y + point.buffer);
     }
-    std::cout << "u min: " << u_min << "\n";
-    std::cout << "u max: " << u_max << "\n";
-    std::cout << "v min: " << v_min << "\n";
-    std::cout << "v max: " << v_max << "\n";
+    //std::cout << "u min: " << u_min << "\n";
+    //std::cout << "u max: " << u_max << "\n";
+    //std::cout << "v min: " << v_min << "\n";
+    //std::cout << "v max: " << v_max << "\n";
 
     // Define sun bounding box vertices in the sun's frame
     std::vector<float2> sun_bounds_sun_frame = {
@@ -157,32 +157,6 @@ void GeometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
         float3 m_min;
         float3 m_max;
 
-        // now we compute AABB based on its aperture and surface type
-        //if (element->get_surface_type() == SurfaceType::CYLINDER) {
-        //        // local min and max of the cylinder of y axis 
-        //        auto surface = std::dynamic_pointer_cast<SurfaceCylinder>(element->get_surface());
-        //        if (!surface) {
-        //            throw std::runtime_error("Failed to cast surface to SurfaceCylinder");
-        //        }
-
-        //        double radius = surface->get_radius();
-        //        double half_height = surface->get_half_height();
-        //        Vector3d center = element->get_origin();
-
-        //        m_min = make_float3(
-        //            center[0] - radius,
-        //            center[1] - half_height,
-        //            center[2] - radius
-        //        );
-        //        m_max = make_float3(
-        //            center[0] + radius,
-        //            center[1] + half_height,
-        //            center[2] + radius
-        //        );
-
-        //        // transform to global frame 
-        //        
-        //    }
         if (element->get_aperture_type() == ApertureType::CIRCLE) {
 
             /********* TODO **********/
@@ -294,7 +268,6 @@ void GeometryManager::create_geometries() {
 
 
 	int obj_count = m_aabb_list.size();
-    std::cout << "size of aabb_list: " << obj_count << std::endl;
 
     // Allocate memory on the device for the AABB array.
     CUdeviceptr d_aabb;
@@ -349,7 +322,6 @@ void GeometryManager::create_geometries() {
              aabb_input,                     // input:  AABB input description.
              m_state.gas_handle,             // output: traversable handle for the GAS.
              m_state.d_gas_output_buffer);   // output: device buffer for the GAS.
-    
 
     CUDA_CHECK(cudaFree((void*)d_aabb));
     CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_sbt_index)));

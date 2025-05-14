@@ -156,6 +156,10 @@ private:
 	Timer m_timer_setup;
     Timer m_timer_trace;
 
+    // memory usage
+    size_t m_mem_free_before;
+    size_t m_mem_free_after;
+
 
 };
 

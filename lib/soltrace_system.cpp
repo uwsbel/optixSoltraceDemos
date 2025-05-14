@@ -29,7 +29,7 @@ SolTraceSystem::SolTraceSystem(int numSunPoints)
     options.logCallbackFunction = [](unsigned int level, const char* tag, const char* message, void*) {
         std::cerr << "[" << std::setw(2) << level << "][" << std::setw(12) << tag << "]: " << message << "\n";
         };
-    options.logCallbackLevel = 4;
+    options.logCallbackLevel = 1;
     OPTIX_CHECK(optixDeviceContextCreate(cuCtx, &options, &m_state.context));
 
     pipeline_manager = std::make_shared<pipelineManager>(m_state);
@@ -40,8 +40,9 @@ SolTraceSystem::~SolTraceSystem() {
 }
 
 void SolTraceSystem::initialize() {
-
+	cudaMemGetInfo(&m_mem_free_before, nullptr);
     m_timer_setup.start();
+
 
 	Vector3d sun_vec = m_sun_vector.normalized(); // normalize the sun vector
 
@@ -53,21 +54,44 @@ void SolTraceSystem::initialize() {
     data_manager->host_launch_params.sun_vector = m_state.params.sun_vector;
     data_manager->host_launch_params.max_sun_angle = m_state.params.max_sun_angle;
 
-
+    Timer aabb_timer;
+	aabb_timer.start();
     // compute aabb box 
     geometry_manager->populate_aabb_list(m_element_list);
+	aabb_timer.stop();
+	std::cout << "Time to compute AABB: " << aabb_timer.get_time_sec() << " seconds" << std::endl;
+
+
+    Timer sun_timer;
+    sun_timer.start();
 
     // compute sun plane vertices
     geometry_manager->compute_sun_plane();
 
+    sun_timer.stop();
+	std::cout << "Time to compute sun plane: " << sun_timer.get_time_sec() << " seconds" << std::endl;
+
+
+	Timer geometry_timer;
+	geometry_timer.start();
     // handles geoemtries building
     geometry_manager->create_geometries();
+    geometry_timer.stop();
+	std::cout << "Time to create geometries: " << geometry_timer.get_time_sec() << " seconds" << std::endl;
 
     // Pipeline setup.
+	Timer pipeline_timer;
+	pipeline_timer.start();
     pipeline_manager->createPipeline();
-
+    pipeline_timer.stop();
+	std::cout << "Time to create pipeline: " << pipeline_timer.get_time_sec() << " seconds" << std::endl;
+    
+    
+	Timer sbt_timer;
+	sbt_timer.start();
     create_shader_binding_table();
-
+    sbt_timer.stop();
+	std::cout << "Time to create SBT: " << sbt_timer.get_time_sec() << " seconds" << std::endl;
 
     // Initialize launch params
     data_manager->host_launch_params.width = m_num_sunpoints;
@@ -97,17 +121,19 @@ void SolTraceSystem::initialize() {
 	data_manager->host_launch_params.sun_v3 = m_state.params.sun_v3;
 
     // print all the field in the launch params
-    std::cout << "print launch params: " << std::endl;
-    std::cout << "width: " << data_manager->host_launch_params.width << std::endl;
-    std::cout << "height: " << data_manager->host_launch_params.height << std::endl;
-    std::cout << "max_depth: " << data_manager->host_launch_params.max_depth << std::endl;
-    std::cout << "hit_point_buffer: " << data_manager->host_launch_params.hit_point_buffer << std::endl;
-    std::cout << "sun_vector: " << data_manager->host_launch_params.sun_vector.x << " " << data_manager->host_launch_params.sun_vector.y << " " << data_manager->host_launch_params.sun_vector.z << std::endl;
-    std::cout << "max_sun_angle: " << data_manager->host_launch_params.max_sun_angle << std::endl;
-    std::cout << "sun_v0: " << data_manager->host_launch_params.sun_v0.x << " " << data_manager->host_launch_params.sun_v0.y << " " << data_manager->host_launch_params.sun_v0.z << std::endl;
-    std::cout << "sun_v1: " << data_manager->host_launch_params.sun_v1.x << " " << data_manager->host_launch_params.sun_v1.y << " " << data_manager->host_launch_params.sun_v1.z << std::endl;
-    std::cout << "sun_v2: " << data_manager->host_launch_params.sun_v2.x << " " << data_manager->host_launch_params.sun_v2.y << " " << data_manager->host_launch_params.sun_v2.z << std::endl;
-    std::cout << "sun_v3: " << data_manager->host_launch_params.sun_v3.x << " " << data_manager->host_launch_params.sun_v3.y << " " << data_manager->host_launch_params.sun_v3.z << std::endl;
+    if (m_verbose) {
+        std::cout << "print launch params: " << std::endl;
+        std::cout << "width: " << data_manager->host_launch_params.width << std::endl;
+        std::cout << "height: " << data_manager->host_launch_params.height << std::endl;
+        std::cout << "max_depth: " << data_manager->host_launch_params.max_depth << std::endl;
+        std::cout << "hit_point_buffer: " << data_manager->host_launch_params.hit_point_buffer << std::endl;
+        std::cout << "sun_vector: " << data_manager->host_launch_params.sun_vector.x << " " << data_manager->host_launch_params.sun_vector.y << " " << data_manager->host_launch_params.sun_vector.z << std::endl;
+        std::cout << "max_sun_angle: " << data_manager->host_launch_params.max_sun_angle << std::endl;
+        std::cout << "sun_v0: " << data_manager->host_launch_params.sun_v0.x << " " << data_manager->host_launch_params.sun_v0.y << " " << data_manager->host_launch_params.sun_v0.z << std::endl;
+        std::cout << "sun_v1: " << data_manager->host_launch_params.sun_v1.x << " " << data_manager->host_launch_params.sun_v1.y << " " << data_manager->host_launch_params.sun_v1.z << std::endl;
+        std::cout << "sun_v2: " << data_manager->host_launch_params.sun_v2.x << " " << data_manager->host_launch_params.sun_v2.y << " " << data_manager->host_launch_params.sun_v2.z << std::endl;
+        std::cout << "sun_v3: " << data_manager->host_launch_params.sun_v3.x << " " << data_manager->host_launch_params.sun_v3.y << " " << data_manager->host_launch_params.sun_v3.z << std::endl;
+    }
 
     // copy launch params to device
     data_manager->allocateLaunchParams();
@@ -130,6 +156,11 @@ void SolTraceSystem::run() {
     int width = data_manager->host_launch_params.width;
     int height = data_manager->host_launch_params.height;
 
+
+    size_t m_mem_free_after;
+    cudaMemGetInfo(&m_mem_free_after, nullptr);
+    std::cout << "Memory used by launch: " << (m_mem_free_before - m_mem_free_after) / (1024.0 * 1024.0) << " MB\n";
+
     m_timer_trace.start();
     // Launch the simulation.
     OPTIX_CHECK(optixLaunch(
@@ -144,20 +175,23 @@ void SolTraceSystem::run() {
     CUDA_SYNC_CHECK();
 
 	m_timer_trace.stop();
+
+
 }
 
 bool SolTraceSystem::read_st_input(const char* filename) {
     FILE* fp = fopen(filename, "r");
 	if (!fp)
 	{
-		printf("failed to open system input file\n");
+        if (m_verbose)
+    		printf("failed to open system input file\n");
 		return -1;
 	}
 
-	printf("input file: %s\n", filename);
 	if ( !read_system( fp ) )
 	{
-		printf("error in input file.\n");
+		if (m_verbose)
+			printf("error in system input file.\n");
 		fclose(fp);
 		return -1;
 	}
@@ -497,7 +531,7 @@ bool SolTraceSystem::read_sun(FILE* fp) {
     Vector3d sun_vector(X, Y, Z);
 	set_sun_vector(sun_vector);
 
-	printf("sun ps? %d cs: %c  %lg %lg %lg\n", PointSource?1:0, cshape, X, Y, Z);
+	//printf("sun ps? %d cs: %c  %lg %lg %lg\n", PointSource?1:0, cshape, X, Y, Z);
 
 	read_line( buf, 1023, fp );
 	sscanf(buf, "USER SHAPE DATA\t%d", &count);
@@ -651,7 +685,7 @@ bool SolTraceSystem::read_element(FILE* fp) {
 
     if (tok[8][0] == 'c' && tok[17][0] == 'f')
     {
-        printf("Assuming cylindrical element cap. Skipping element. \n");
+        //printf("Assuming cylindrical element cap. Skipping element. \n");
         return true;
     }
 
@@ -761,8 +795,8 @@ bool SolTraceSystem::read_stage(FILE* fp) {
 
 	read_line( buf, 1023, fp ); // read name
 
-	printf("stage '%s': [%d] %lg %lg %lg   %lg %lg %lg   %lg   %d %d %d\n",
-		buf, count, X, Y, Z, AX, AY, AZ, ZRot, virt, multi, tr );
+	//printf("stage '%s': [%d] %lg %lg %lg   %lg %lg %lg   %lg   %d %d %d\n",
+	//	buf, count, X, Y, Z, AX, AY, AZ, ZRot, virt, multi, tr );
 	
 	for (int i=0;i<count;i++)
 		if (!read_element( fp )) 
@@ -785,7 +819,7 @@ bool SolTraceSystem::read_system(FILE* fp) {
 
 		unsigned int file_version = vmaj*10000 + vmin*100 + vmic;
 		
-		printf( "loading input file version %d.%d.%d\n", vmaj, vmin, vmic );
+		//printf( "loading input file version %d.%d.%d\n", vmaj, vmin, vmic );
 	}
 	else
 	{

@@ -449,7 +449,5 @@ extern "C" __global__ void __intersection__rectangle_parabolic()
     optixReportIntersection(t, 0,
         float3_as_args(world_normal),
         __float_as_uint(a1),
-        __float_as_uint(a2));
-
-    
+        __float_as_uint(a2));    
 }
