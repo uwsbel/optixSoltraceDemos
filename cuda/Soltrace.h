@@ -15,7 +15,6 @@ const unsigned int MAX_TRACE_DEPTH      = 5u;
     
 struct HitGroupData
 {
-    GeometryDataST geometry_data;
     MaterialData material_data;
 };
 
@@ -37,6 +36,14 @@ enum RayType
     RAY_TYPE_COUNT = 1         // not using occlusion/shadow rays atm
 };
 
+enum OpticalEntityType : unsigned int {
+    RECTANGLE_FLAT_MIRROR         = 0,
+    RECTANGLE_PARABOLIC_MIRROR    = 1,
+    RECTANGLE_FLAT_RECEIVER       = 2,
+    CYLINDRICAL_RECEIVER          = 3,
+	NUM_OPTICAL_ENTITY_TYPES
+};
+
 struct LaunchParams
 {
     unsigned int                width;   // essentially number of rays launched and sun points 
@@ -49,10 +56,13 @@ struct LaunchParams
     float3                      sun_vector;
     float                       max_sun_angle;
 
+
     float3                      sun_v0;
     float3                      sun_v1;
     float3                      sun_v2;
     float3                      sun_v3;
+
+	GeometryDataST*             geometry_data_array;
 };
 
 struct PerRayData

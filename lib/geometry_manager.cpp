@@ -263,7 +263,7 @@ static void buildGas(
     }
 }
 
-void GeometryManager::create_geometries() {
+void GeometryManager::create_geometries(const std::vector<std::shared_ptr<Element>>& element_list) {
 
 
 	int obj_count = m_aabb_list.size();
@@ -286,8 +286,39 @@ void GeometryManager::create_geometries() {
     // TODO: for large number of elements with less number of types
 	// we do not need sbt to be the same size as the aabb_list 
     std::vector<uint32_t> sbt_index(obj_count);
-    for (int i = 0; i < obj_count; i++) {
-        sbt_index[i] = i;
+    for (int i = 0; i < obj_count - 1; i++) {
+		// find the corresponding shader binding table index (OpticalEntityType) when going through the list
+        
+		Element my_element = *element_list[i];
+
+		if (my_element.get_aperture_type() == ApertureType::RECTANGLE) {
+
+            if (my_element.get_surface_type() == SurfaceType::PARABOLIC) {
+                sbt_index[i] = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_PARABOLIC_MIRROR);
+            }
+            else if (my_element.get_surface_type() == SurfaceType::FLAT) {
+                sbt_index[i] = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_FLAT_MIRROR);
+            }
+            else {
+                // print error message 
+				std::cerr << "Error: Unknown surface type for element " << i << std::endl;
+            }
+		}
+        else {
+            std::cerr << "Error: Unknown surface type for element " << i << std::endl;
+		}
+    }
+
+	// add receiver sbt_index
+	int i = obj_count - 1;
+	Element my_element = *element_list[i];
+
+	if (my_element.get_surface_type() == SurfaceType::FLAT) {
+		sbt_index[i] = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_FLAT_RECEIVER);
+	}
+
+	if (my_element.get_surface_type() == SurfaceType::CYLINDER) {
+        sbt_index[i] = static_cast<uint32_t>(OpticalEntityType::CYLINDRICAL_RECEIVER);
     }
 
     // host to device

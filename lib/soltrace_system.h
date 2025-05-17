@@ -45,7 +45,7 @@ public:
     void compute_sun_plane(LaunchParams& params);
 
 	/// build the GAS (Geometry Acceleration Structure) using the AABB list, populate optix state
-    void create_geometries();
+    void create_geometries(const std::vector<std::shared_ptr<Element>>& element_list);
 
 
 private: 

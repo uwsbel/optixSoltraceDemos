@@ -6,12 +6,16 @@
 #include <sutil/vec_math.h>
 #include "GeometryDataST.h"
 
+extern "C" {
+    __constant__ soltrace::LaunchParams params;
+}
+
+
 extern "C" __global__ void __intersection__parallelogram()
 {
-    // Load shader binding table (SBT) and access data specific to this hit group
-    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryDataST::Parallelogram& parallelogram = sbt_data->geometry_data.getParallelogram();
-
+	int i = optixGetPrimitiveIndex();
+    const GeometryDataST::Parallelogram& parallelogram = params.geometry_data_array[i].getParallelogram();
+        
     // Get ray information: origin, direction, and min/max distances over which ray should be tested
     const float3 ray_orig = optixGetWorldRayOrigin();
     const float3 ray_dir  = optixGetWorldRayDirection();
@@ -44,9 +48,8 @@ extern "C" __global__ void __intersection__parallelogram()
 extern "C" __global__ void __intersection__rectangle_flat()
 {
 
-    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryDataST::Rectangle_Flat& rectangle = sbt_data->geometry_data.getRectangle_Flat();
-
+	const GeometryDataST::Rectangle_Flat& rectangle = params.geometry_data_array[optixGetPrimitiveIndex()].getRectangle_Flat();
+        
     const float3 ray_orig = optixGetWorldRayOrigin();
     const float3 ray_dir = optixGetWorldRayDirection();
     const float ray_tmin = optixGetRayTmin();
@@ -84,9 +87,7 @@ extern "C" __global__ void __intersection__rectangle_flat()
 
 extern "C" __global__ void __intersection__cylinder_y()
 {
-    // Load shader binding table (SBT) and access data specific to this hit group
-    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryDataST::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
+	const GeometryDataST::Cylinder_Y& cyl = params.geometry_data_array[optixGetPrimitiveIndex()].getCylinder_Y();
 
     // Get ray information: origin, direction, and min/max distances over which ray should be tested
     const float3 ray_orig = optixGetWorldRayOrigin();
@@ -176,9 +177,7 @@ extern "C" __global__ void __intersection__cylinder_y()
 // it can also be modeled as cylinder with two disks. 
 extern "C" __global__ void __intersection__cylinder_y_capped()
 {
-    // Load shader binding table (SBT) and access data specific to this hit group
-    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryDataST::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
+	const GeometryDataST::Cylinder_Y& cyl = params.geometry_data_array[optixGetPrimitiveIndex()].getCylinder_Y();
 
     // Get ray information: origin, direction, and min/max distances over which ray should be tested
     const float3 ray_orig = optixGetWorldRayOrigin();
@@ -319,10 +318,7 @@ extern "C" __global__ void __intersection__cylinder_y_capped()
 // The local hit point is then transformed back to world space for reporting.
 extern "C" __global__ void __intersection__rectangle_parabolic()
 {
-    // Load shader binding table (SBT) data and retrieve the parabolic rectangle.
-    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryDataST::Rectangle_Parabolic& rect = sbt_data->geometry_data.getRectangleParabolic();
-
+    const GeometryDataST::Rectangle_Parabolic& rect = params.geometry_data_array[optixGetPrimitiveIndex()].getRectangleParabolic();
     // Get ray information.
     const float3 ray_orig = optixGetWorldRayOrigin();
     const float3 ray_dir = optixGetWorldRayDirection();

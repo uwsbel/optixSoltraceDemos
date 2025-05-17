@@ -85,9 +85,7 @@ extern "C" __global__ void __closesthit__mirror()
 
 extern "C" __global__ void __closesthit__receiver()
 {
-    // Retrieve the hit group data and access the parallelogram geometry
-    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryDataST::Rectangle_Flat& rectangle_flat = sbt_data->geometry_data.getRectangle_Flat();
+    const GeometryDataST::Rectangle_Flat& rectangle_flat = params.geometry_data_array[optixGetPrimitiveIndex()].getRectangle_Flat();
 
     /*
     float3 object_normal = make_float3( __uint_as_float( optixGetAttribute_0() ), __uint_as_float( optixGetAttribute_1() ),
@@ -124,9 +122,12 @@ extern "C" __global__ void __closesthit__receiver()
 
 extern "C" __global__ void __closesthit__receiver__cylinder__y()
 {
-    // Retrieve the hit group data and access the parallelogram geometry
-    const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
-    const GeometryDataST::Cylinder_Y& cyl = sbt_data->geometry_data.getCylinder_Y();
+    //// Retrieve the hit group data and access the parallelogram geometry
+    //const soltrace::HitGroupData* sbt_data = reinterpret_cast<soltrace::HitGroupData*>(optixGetSbtDataPointer());
+
+    
+
+    const GeometryDataST::Cylinder_Y& cyl = params.geometry_data_array[optixGetPrimitiveIndex()].getCylinder_Y();
 
     /*
     float3 object_normal = make_float3( __uint_as_float( optixGetAttribute_0() ), __uint_as_float( optixGetAttribute_1() ),

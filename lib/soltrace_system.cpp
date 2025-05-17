@@ -71,7 +71,9 @@ void SolTraceSystem::initialize() {
 	Timer geometry_timer;
 	geometry_timer.start();
     // handles geoemtries building
-    geometry_manager->create_geometries();
+    geometry_manager->create_geometries(m_element_list);
+    // create the geometry data array
+    data_manager->allocateGeometryDataArray(m_element_list);
     geometry_timer.stop();
 	std::cout << "Time to create geometries: " << geometry_timer.get_time_sec() << " seconds" << std::endl;
 
@@ -82,8 +84,6 @@ void SolTraceSystem::initialize() {
     pipeline_timer.stop();
 	std::cout << "Time to create pipeline: " << pipeline_timer.get_time_sec() << " seconds" << std::endl;
     
-    // create the geometry data array
-	data_manager->allocateGeometryDataArray(m_element_list);
 
 	Timer sbt_timer;
 	sbt_timer.start();
@@ -288,22 +288,17 @@ void SolTraceSystem::clean_up() {
 // with their corresponding programs (ray generation, miss, and hit group).
 void SolTraceSystem::create_shader_binding_table(){
 
-	int obj_count = m_element_list.size();  // Number of objects in the scene (heliostats + receivers)
-
     // Ray generation program record
-	// TODO: Move this out of here, has nothing to do with the scene geometry
     {
         CUdeviceptr d_raygen_record;                   // Device pointer to hold the raygen SBT record.
         size_t      sizeof_raygen_record = sizeof(sutil::EmptyRecord);
 
-        // Allocate memory for the raygen SBT record on the device.
         CUDA_CHECK(cudaMalloc(
             reinterpret_cast<void**>(&d_raygen_record),
             sizeof_raygen_record));
 
-        sutil::EmptyRecord rg_sbt;  // Host representation of the raygen SBT record.
+        sutil::EmptyRecord rg_sbt;  // host
 
-        // Pack the program header into the raygen SBT record.
         optixSbtRecordPackHeader(m_state.raygen_prog_group, &rg_sbt);
 
         // Copy the raygen SBT record from host to device.
@@ -346,78 +341,65 @@ void SolTraceSystem::create_shader_binding_table(){
 
     // Hitgroup program record
     {
-        // Total number of hitgroup records : one per ray type per object.
-        const unsigned int count_records = soltrace::RAY_TYPE_COUNT * obj_count;
+        // Total number of hitgroup records is the number of optical entity types
+        const unsigned int count_records = soltrace::NUM_OPTICAL_ENTITY_TYPES;
         std::vector<HitGroupRecord> hitgroup_records_list(count_records);
 
-        // Note: Fill SBT record array the same order that acceleration structure is built.
-        int sbt_idx = 0; // Index to track current record.
+        // now we need to populate hitgroup_records_list, basically match the 
+		// OpticalEntityType with the corresponding m_program_group
+        for (unsigned int i = 0; i < count_records; i++) {
 
-        // TODO: Material params - arbitrary right now
-        // TODO: separate number of heliostats and receivers 
+			soltrace::OpticalEntityType my_type = static_cast<soltrace::OpticalEntityType>(i);
+            // initialize program handle and data
+            OptixProgramGroup program_group_handle = nullptr;
+            SurfaceApertureMap map = {};
 
-		size_t num_heliostats = m_element_list.size() - 1; // Assuming the last element is the receiver
+			switch (my_type) {
+            case soltrace::OpticalEntityType::RECTANGLE_FLAT_MIRROR: 
+				map = { SurfaceType::FLAT, ApertureType::RECTANGLE };
+                program_group_handle = pipeline_manager->getMirrorProgram(map);
+                hitgroup_records_list[i].data.material_data.mirror = {0.875425, 0, 0, 0};
 
-        for (size_t i = 0; i < num_heliostats; i++) {
+				break;
+            case soltrace::OpticalEntityType::RECTANGLE_PARABOLIC_MIRROR:
+                map = { SurfaceType::PARABOLIC, ApertureType::RECTANGLE };
+                program_group_handle = pipeline_manager->getMirrorProgram(map);
+                hitgroup_records_list[i].data.material_data.mirror = { 0.875425, 0, 0, 0 };
+                break;
+            case soltrace::OpticalEntityType::RECTANGLE_FLAT_RECEIVER:
+                program_group_handle = pipeline_manager->getReceiverProgram(SurfaceType::FLAT);
+				hitgroup_records_list[i].data.material_data.receiver = { 0.95, 0, 0, 0 };
+                break;
+            case soltrace::OpticalEntityType::CYLINDRICAL_RECEIVER:
+                program_group_handle = pipeline_manager->getReceiverProgram(SurfaceType::CYLINDER);
+                hitgroup_records_list[i].data.material_data.receiver = { 0.95, 0, 0, 0 };
+                break;            
+            default:
+				std::cerr << "Unknown OpticalEntityType: " << my_type << std::endl;
+			}
 
-			auto element = m_element_list.at(i);
+            OPTIX_CHECK(optixSbtRecordPackHeader(program_group_handle, &hitgroup_records_list[i].header));
 
-            // TODO: setRectangleParabolic should be matched automaitcally.
-			SurfaceType surface_type = element->get_surface_type();
-			ApertureType aperture_type = element->get_aperture_type();
-			SurfaceApertureMap map = { surface_type, aperture_type };
-            
-
-
-            OPTIX_CHECK(optixSbtRecordPackHeader(pipeline_manager->getMirrorProgram(map), 
-                                                 &hitgroup_records_list[sbt_idx]));
-            // assign geometry data to the corresponding hitgroup record 
-            //hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
-            hitgroup_records_list[sbt_idx].data.material_data.mirror = {
-                                                 0.875425f, // Reflectivity.
-                                                 0.0f,  // Transmissivity.
-                                                 0.0f,  // Slope error.
-                                                 0.0f   // Specularity error.
-            };
-            sbt_idx++;
-        }
-
-        // TODO: perform the same way 
-        for (size_t i = num_heliostats; i < m_element_list.size(); i++) {
-            auto element = m_element_list.at(i);
-            // Configure Receiver SBT record.
-            SurfaceType surface_type = element->get_surface_type();
-            OPTIX_CHECK(optixSbtRecordPackHeader(
-                pipeline_manager->getReceiverProgram(surface_type),
-                &hitgroup_records_list[sbt_idx]));
-            //hitgroup_records_list[sbt_idx].data.geometry_data = element->toDeviceGeometryData();
-            hitgroup_records_list[sbt_idx].data.material_data.receiver = {
-                0.95f, // Reflectivity.
-                0.0f,  // Transmissivity.
-                0.0f,  // Slope error.
-                0.0f   // Specularity error.
-            };
-            sbt_idx++;
         }
 
         // Allocate memory for hitgroup records on the device.
-        CUdeviceptr d_hitgroup_records;
+        CUdeviceptr hitgroup_records_D;
         size_t      sizeof_hitgroup_record = sizeof(HitGroupRecord);
         CUDA_CHECK(cudaMalloc(
-            reinterpret_cast<void**>(&d_hitgroup_records),
+            reinterpret_cast<void**>(&hitgroup_records_D),
             sizeof_hitgroup_record * count_records
         ));
 
         // Copy hitgroup records from host to device.
         CUDA_CHECK(cudaMemcpy(
-            reinterpret_cast<void*>(d_hitgroup_records),
+            reinterpret_cast<void*>(hitgroup_records_D),
             hitgroup_records_list.data(),
             sizeof_hitgroup_record * count_records,
             cudaMemcpyHostToDevice
         ));
 
         // Configure the SBT hitgroup fields.
-        m_state.sbt.hitgroupRecordBase = d_hitgroup_records;             // Base address of hitgroup records.
+        m_state.sbt.hitgroupRecordBase = hitgroup_records_D;             // Base address of hitgroup records.
         m_state.sbt.hitgroupRecordCount = count_records;                  // Total number of hitgroup records.
         m_state.sbt.hitgroupRecordStrideInBytes = static_cast<uint32_t>(sizeof_hitgroup_record);  // Stride size.
     }

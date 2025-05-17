@@ -324,17 +324,6 @@ OptixProgramGroup pipelineManager::getMirrorProgram(SurfaceApertureMap map) cons
 		}
 
     }
-
-    else if (map.apertureType == ApertureType::CIRCLE) {
-        if (map.surfaceType == SurfaceType::FLAT) {
-			//std::cout << "returning mirror program group 4, circle flat" << std::endl;
-			return m_program_groups[3];
-		}
-        else if (map.surfaceType == SurfaceType::PARABOLIC) {
-			//std::cout << "returning mirror program group 5, circle parabolic" << std::endl;
-			return m_program_groups[4];
-		}
-	}
 }
 
 OptixProgramGroup pipelineManager::getReceiverProgram(SurfaceType surfaceType) const {
