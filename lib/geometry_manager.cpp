@@ -144,36 +144,55 @@ void GeometryManager::compute_sun_plane(LaunchParams& params) {
     params.sun_v3 = sun_bounds_global_frame[3];   // top-left
 }
 
+void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list) {
+    m_aabb_list.clear(); // Clear the existing AABB list
+	m_sbt_index.clear(); // Clear the existing SBT index list
+	m_geometry_data_array_H.clear(); // Clear the existing geometry data array
 
-// generate aabb list given all the elements 
-void GeometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Element>>& element_list) {
-	m_aabb_list.clear(); // Clear the existing AABB list
+	int num_objects = element_list.size(); // Number of objects in the scene
 
-    for (const auto& element : element_list) {
-		
-		// Create an OptixAabb from the geometry data
-		OptixAabb aabb;
+	// Resize
+	m_aabb_list.resize(num_objects);
+	m_geometry_data_array_H.resize(num_objects);
+	m_sbt_index.resize(num_objects); 
+
+
+    for (int i = 0; i < num_objects; i++) {
+
+		std::shared_ptr<Element> element = element_list[i];
+
+        // Create an OptixAabb from the geometry data
+        OptixAabb aabb;
         float3 m_min;
         float3 m_max;
+        uint32_t sbt_offset = 0;
 
         if (element->get_aperture_type() == ApertureType::CIRCLE) {
-
-            /********* TODO **********/
-			m_min = make_float3(0.0f, 0.0f, 0.0f); // Initialize min to a large value
-			m_max = make_float3(0.0f, 0.0f, 0.0f); // Initialize max to a small value
-
+            m_min = make_float3(0.0f, 0.0f, 0.0f); // Initialize min to a large value
+            m_max = make_float3(0.0f, 0.0f, 0.0f); // Initialize max to a small value
         }
 
 
         if (element->get_aperture_type() == ApertureType::RECTANGLE) {
             element->compute_bounding_box();
-			m_min.x = element->get_lower_bounding_box()[0];
-			m_min.y = element->get_lower_bounding_box()[1];
-			m_min.z = element->get_lower_bounding_box()[2];
+            m_min.x = element->get_lower_bounding_box()[0];
+            m_min.y = element->get_lower_bounding_box()[1];
+            m_min.z = element->get_lower_bounding_box()[2];
 
-			m_max.x = element->get_upper_bounding_box()[0];
-			m_max.y = element->get_upper_bounding_box()[1];
-			m_max.z = element->get_upper_bounding_box()[2];
+            m_max.x = element->get_upper_bounding_box()[0];
+            m_max.y = element->get_upper_bounding_box()[1];
+            m_max.z = element->get_upper_bounding_box()[2];
+
+            if (element->get_surface_type() == SurfaceType::PARABOLIC) {
+                sbt_offset = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_PARABOLIC_MIRROR);
+            }
+            else if (element->get_surface_type() == SurfaceType::FLAT) {
+                sbt_offset = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_FLAT_MIRROR);
+            }
+            else {
+                // print error message 
+                std::cerr << "Unknown surface type for element " << i << std::endl;
+            }
         }
 
 
@@ -185,10 +204,29 @@ void GeometryManager::populate_aabb_list(const std::vector<std::shared_ptr<Eleme
         aabb.maxY = m_max.y;
         aabb.maxZ = m_max.z;
 
-		// Add the AABB to the list
-		m_aabb_list.push_back(aabb);
-	}
+
+		m_aabb_list[i] = aabb; // Store the AABB in the list
+		m_sbt_index[i] = sbt_offset; // Store the SBT index
+        m_geometry_data_array_H[i] = element_list[i]->toDeviceGeometryData();
+    }
+
+
+    // add receiver sbt_index
+	std::shared_ptr<Element> receiver = element_list[num_objects - 1];
+
+    if (receiver->get_surface_type() == SurfaceType::FLAT) {
+        m_sbt_index[num_objects-1] = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_FLAT_RECEIVER);
+    }
+    else if (receiver->get_surface_type() == SurfaceType::CYLINDER) {
+        m_sbt_index[num_objects-1] = static_cast<uint32_t>(OpticalEntityType::CYLINDRICAL_RECEIVER);
+    }
+    else {
+		// print error message 
+		std::cerr << "Error: Unknown surface type for receiver " << std::endl; 
+    }
 }
+
+
 
 // Build a GAS (Geometry Acceleration Structure) for the scene.
 static void buildGas(
@@ -263,7 +301,7 @@ static void buildGas(
     }
 }
 
-void GeometryManager::create_geometries(const std::vector<std::shared_ptr<Element>>& element_list) {
+void GeometryManager::create_geometries() {
 
 
 	int obj_count = m_aabb_list.size();
@@ -276,58 +314,19 @@ void GeometryManager::create_geometries(const std::vector<std::shared_ptr<Elemen
                obj_count * sizeof(OptixAabb),
                cudaMemcpyHostToDevice));
 
-    // initialize aabb_input_flags vector
+    // populate aabb_input_flags vector
     std::vector<uint32_t> aabb_input_flags(obj_count);
     for (int i = 0; i < obj_count; i++) {
         aabb_input_flags[i] = OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT;
     }
 
-    // Define shader binding table (SBT) indices for each geometry.
-    // TODO: for large number of elements with less number of types
-	// we do not need sbt to be the same size as the aabb_list 
-    std::vector<uint32_t> sbt_index(obj_count);
-    for (int i = 0; i < obj_count - 1; i++) {
-		// find the corresponding shader binding table index (OpticalEntityType) when going through the list
-        
-		Element my_element = *element_list[i];
-
-		if (my_element.get_aperture_type() == ApertureType::RECTANGLE) {
-
-            if (my_element.get_surface_type() == SurfaceType::PARABOLIC) {
-                sbt_index[i] = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_PARABOLIC_MIRROR);
-            }
-            else if (my_element.get_surface_type() == SurfaceType::FLAT) {
-                sbt_index[i] = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_FLAT_MIRROR);
-            }
-            else {
-                // print error message 
-				std::cerr << "Error: Unknown surface type for element " << i << std::endl;
-            }
-		}
-        else {
-            std::cerr << "Error: Unknown surface type for element " << i << std::endl;
-		}
-    }
-
-	// add receiver sbt_index
-	int i = obj_count - 1;
-	Element my_element = *element_list[i];
-
-	if (my_element.get_surface_type() == SurfaceType::FLAT) {
-		sbt_index[i] = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_FLAT_RECEIVER);
-	}
-
-	if (my_element.get_surface_type() == SurfaceType::CYLINDER) {
-        sbt_index[i] = static_cast<uint32_t>(OpticalEntityType::CYLINDRICAL_RECEIVER);
-    }
-
-    // host to device
-    CUdeviceptr    d_sbt_index;
+	// device vector for SBT index
+    CUdeviceptr d_sbt_index;
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sbt_index), obj_count * sizeof(uint32_t)));
     CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_sbt_index),
-                         sbt_index.data(),
-                         obj_count * sizeof(uint32_t), 
-                         cudaMemcpyHostToDevice));
+                          m_sbt_index.data(),
+                          obj_count * sizeof(uint32_t), 
+                          cudaMemcpyHostToDevice));
 
     // Configure the input for the GAS build process.
     OptixBuildInput aabb_input = {};

@@ -41,16 +41,8 @@ void dataManager::updateLaunchParams() {
     CUDA_CHECK(cudaMemcpy(launch_params_D, &launch_params_H, sizeof(LaunchParams), cudaMemcpyHostToDevice));
 }
 
-void dataManager::allocateGeometryDataArray(const std::vector<std::shared_ptr<Element>> element_list) {
+void dataManager::allocateGeometryDataArray(std::vector<GeometryDataST> geometry_data_array_H) {
 
-	// resize geometry_data_array_H to the number of elements
-	geometry_data_array_H.resize(element_list.size());
-
-	for (int i = 0; i < element_list.size(); i++) {
-
-		geometry_data_array_H[i] = element_list[i]->toDeviceGeometryData();
-
-	}
 
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&geometry_data_array_D),
         geometry_data_array_H.size() * sizeof(GeometryDataST)));
@@ -59,11 +51,6 @@ void dataManager::allocateGeometryDataArray(const std::vector<std::shared_ptr<El
 		geometry_data_array_H.size() * sizeof(GeometryDataST), cudaMemcpyHostToDevice));
 	// make sure launch_params_H is updated with the new geometry data array
 	launch_params_H.geometry_data_array = geometry_data_array_D;
-
-	// print out the geometry data array type for debugging 
-	//for (int i = 0; i < geometry_data_array_H.size(); i++) {
-	//	std::cout << "geometry_data_array_H[" << i << "] = " << geometry_data_array_H[i].type << std::endl;
-	//}
 
 }
 

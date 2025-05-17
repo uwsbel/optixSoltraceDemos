@@ -18,7 +18,6 @@ public:
     // Device pointer to launch parameters.
     soltrace::LaunchParams* launch_params_D;
 
-	std::vector<GeometryDataST> geometry_data_array_H; // host-side, geometry data
 	// device pointer to geometry data
     GeometryDataST* geometry_data_array_D;
 
@@ -34,10 +33,9 @@ public:
 
     void updateLaunchParams();
 
-    // populate geometry_data_array_H from the element list
 	// create geometry_data_array_D on the device
 	// then launch_params_D.geometry_data_array = geometry_data_array_D gets a copy!
-	void allocateGeometryDataArray(const std::vector<std::shared_ptr<Element>> element_list);
+	void allocateGeometryDataArray(std::vector<GeometryDataST> geometry_data_array);
 };
 
 #endif  // DATAMANAGER_H

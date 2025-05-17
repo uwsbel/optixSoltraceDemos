@@ -36,8 +36,11 @@ public:
 	GeometryManager(SoltraceState& state) : m_state(state) {}
     ~GeometryManager() {} 
 
-	/// populate the AABB list from the elements
-    void populate_aabb_list(const std::vector<std::shared_ptr<Element>>& element_list);
+	/// go through the list of elements and collect the geometry info on the host: 
+	/// - AABBs
+	/// - GeometryDataST on the host
+	/// - SBT index
+    void collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list);
 
     /// compute the sun plane with sun vector and a list of AABBs 
     // TODO: need to think about who owns this, pipeline? 
@@ -45,15 +48,19 @@ public:
     void compute_sun_plane(LaunchParams& params);
 
 	/// build the GAS (Geometry Acceleration Structure) using the AABB list, populate optix state
-    void create_geometries(const std::vector<std::shared_ptr<Element>>& element_list);
+    void create_geometries();
+
+    /// return the list of geometry data vector
+	std::vector<GeometryDataST>& get_geometry_data_array() { return m_geometry_data_array_H; }
 
 
 private: 
 	SoltraceState& m_state;
 
-    /// list of AABB vertices 
-    // TODO: using OptixAABB for now, but should be changed to host side data structure later
+    // data related to the geometry and the scene on the host side
 	std::vector<OptixAabb> m_aabb_list;
+    std::vector<GeometryDataST> m_geometry_data_array_H; // host-side, geometry data
+    std::vector<uint32_t> m_sbt_index;
 };
 
 /**

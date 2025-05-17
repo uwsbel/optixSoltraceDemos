@@ -50,32 +50,21 @@ void SolTraceSystem::initialize() {
     data_manager->launch_params_H.sun_vector = make_float3(sun_vec[0], sun_vec[1], sun_vec[2]);
     data_manager->launch_params_H.max_sun_angle = m_sun_angle;
 
-    Timer aabb_timer;
-	aabb_timer.start();
+    Timer geometry_timer;
+    geometry_timer.start();
     // compute aabb box 
-    geometry_manager->populate_aabb_list(m_element_list);
-	aabb_timer.stop();
-	std::cout << "Time to compute AABB: " << aabb_timer.get_time_sec() << " seconds" << std::endl;
+	geometry_manager->collect_geometry_info(m_element_list);
+    geometry_manager->create_geometries();
+    geometry_timer.stop();
+	std::cout << "Time to create geometries: " << geometry_timer.get_time_sec() << " seconds" << std::endl;
 
 
     Timer sun_timer;
     sun_timer.start();
-
     // compute sun plane vertices
     geometry_manager->compute_sun_plane(data_manager->launch_params_H);
-
     sun_timer.stop();
 	std::cout << "Time to compute sun plane: " << sun_timer.get_time_sec() << " seconds" << std::endl;
-
-
-	Timer geometry_timer;
-	geometry_timer.start();
-    // handles geoemtries building
-    geometry_manager->create_geometries(m_element_list);
-    // create the geometry data array
-    data_manager->allocateGeometryDataArray(m_element_list);
-    geometry_timer.stop();
-	std::cout << "Time to create geometries: " << geometry_timer.get_time_sec() << " seconds" << std::endl;
 
     // Pipeline setup.
 	Timer pipeline_timer;
@@ -90,6 +79,9 @@ void SolTraceSystem::initialize() {
     create_shader_binding_table();
     sbt_timer.stop();
 	std::cout << "Time to create SBT: " << sbt_timer.get_time_sec() << " seconds" << std::endl;
+
+
+
 
     // Initialize launch params
     data_manager->launch_params_H.width = m_num_sunpoints;
@@ -109,9 +101,9 @@ void SolTraceSystem::initialize() {
     // Create a CUDA stream for asynchronous operations.
     CUDA_CHECK(cudaStreamCreate(&m_state.stream));
 
-    // TODO: need to get rid of the m_state.params 
     // Link the GAS handle.
     data_manager->launch_params_H.handle = m_state.gas_handle;
+    data_manager->allocateGeometryDataArray(geometry_manager->get_geometry_data_array());
 
     // print all the field in the launch params
     if (m_verbose) {
