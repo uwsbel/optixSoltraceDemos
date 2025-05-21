@@ -2,149 +2,21 @@
 #include <cfloat> 
 #include <cuda/GeometryDataST.h>
 #include <cuda/Soltrace.h>
+#include <sun_utils.h>
 #include <soltrace_state.h>
 #include <optix.h>
 #include <vector>
 
-// TODO: Sun program ask Allie: 
-// in computeSunFrame, axis compared to noramlized sun vector, not sun vector 
-// Do we need sun vector or normalized sun vector? if it's the latter, we should store normalized one in the state 
-// do we need struct like ProjectedPoint? does it get used in other places? 
-// when generating sun plane, do we include receiver or not? 
 
 // this one need to be refactored
-// Cuda/optix ones has to be separated from non-cuda ones
-// note that the sun plane is part of the pre-processing
-// should be done after the geometry is created and before the launch? 
+// note that the sun plane is part of the pre-processing, need to be able to 
+// compute sun plane fast with updated scene geometry and sun vector
+// ask allie about the abs() part, the distance for buffer calculation and the bin size for flux map computation
 
-// PRE-PROCESSING SCENE GEOMETRY AND SUN DEFINITION
-// Compute the sun's coordinate frame
-static void computeSunFrame(SoltraceState& state, float3 sun_vector, float3& sun_u, float3& sun_v) {
-    float3 axis = (abs(sun_vector.x) < 0.9f) ? make_float3(1.0f, 0.0f, 0.0f) : make_float3(0.0f, 1.0f, 0.0f);
-    // TODO: cross need to follow left
-    sun_u = normalize(cross(axis, sun_vector));
-    sun_v = normalize(cross(sun_vector, sun_u));
-}
-
-// Find the distance to the closest object along the sun vector
-static float computeSunPlaneDistance(SoltraceState& state, 
-                                     float3 sun_vector, 
-                                     std::vector<soltrace::BoundingBoxVertex>& bounding_box_vertices) {
-    // Max distance from Origin along sun vector
-    float max_distance = 0.0f;
-    for (auto& vertex : bounding_box_vertices) {
-        float distance = abs(dot(vertex.point, sun_vector));
-        vertex.distance = distance;
-        if (distance > max_distance) {
-            max_distance = distance;
-        }
-    }
-    return max_distance;
-}
-
-// Project a point onto the plane at distance d along the sun vector
-static float3 projectOntoPlaneAtDistance(SoltraceState& state, float3& sun_vector, const float3& point, float d) {
-    float3 plane_center = d * sun_vector;
-    return point - dot(point - plane_center, sun_vector) * sun_vector;
-}
-
-// Function to compute all 8 vertices of an AABB
-static void getAABBVertices(const OptixAabb& aabb, std::vector<soltrace::BoundingBoxVertex>& vertices) {
-    // Min and max corners
-    float3 minCorner = make_float3(aabb.minX, aabb.minY, aabb.minZ);
-    float3 maxCorner = make_float3(aabb.maxX, aabb.maxY, aabb.maxZ);
-
-    // Compute the 8 vertices and distances
-    std::vector<float3> points = {
-        make_float3(minCorner.x, minCorner.y, minCorner.z), // 0
-        make_float3(maxCorner.x, minCorner.y, minCorner.z), // 1
-        make_float3(minCorner.x, maxCorner.y, minCorner.z), // 2
-        make_float3(maxCorner.x, maxCorner.y, minCorner.z), // 3
-        make_float3(minCorner.x, minCorner.y, maxCorner.z), // 4
-        make_float3(maxCorner.x, minCorner.y, maxCorner.z), // 5
-        make_float3(minCorner.x, maxCorner.y, maxCorner.z), // 6
-        make_float3(maxCorner.x, maxCorner.y, maxCorner.z)  // 7
-    };
-
-    for (const auto& point : points) {
-        float distance = 0.0f;
-        vertices.push_back({ distance, point });
-    }
-}
-
-// Function to collect AABB vertices for all objects
-static void collectAllAABBVertices(const std::vector<OptixAabb>& aabbs,
-    std::vector<soltrace::BoundingBoxVertex>& allVertices) {
-    for (int i = 0; i < aabbs.size(); ++i) {
-        getAABBVertices(aabbs[i], allVertices);
-    }
-}
-
-// Compute the bounding box of all projected objects onto sun plane
-void GeometryManager::compute_sun_plane(LaunchParams& params) {
-
-    std::vector<soltrace::BoundingBoxVertex> bounding_box_vertices;
-    int count = m_aabb_list.size();
-
-
-
-    collectAllAABBVertices(m_aabb_list, bounding_box_vertices);
-
-
-    float d = computeSunPlaneDistance(m_state, params.sun_vector, bounding_box_vertices);
-
-    float3 sun_u, sun_v;
-    computeSunFrame(m_state, params.sun_vector, sun_u, sun_v);
-
-    // Project points onto the sun plane
-    std::vector<soltrace::ProjectedPoint> projected_points;
-    for (const auto& vertex : bounding_box_vertices) {
-        // Compute the buffer for this point
-        float buffer = vertex.distance * tan(params.max_sun_angle);
-        // Project the point onto the sun plane
-        float3 projected_point = projectOntoPlaneAtDistance(m_state, params.sun_vector, vertex.point, d);
-        float u = dot(projected_point, sun_u);
-        float v = dot(projected_point, sun_v);
-        soltrace::ProjectedPoint projected_point_uv = { buffer, make_float2(u, v) };
-        projected_points.emplace_back(projected_point_uv);
-    }
-
-    // Find bounding box in the sun's frame
-    float u_min = FLT_MAX;  // Initialize to the largest possible float
-    float u_max = -FLT_MAX; // Initialize to the smallest possible float
-    float v_min = FLT_MAX;
-    float v_max = -FLT_MAX;
-    for (const auto& point : projected_points) {
-        u_min = fminf(u_min, point.point.x - point.buffer);
-        u_max = fmaxf(u_max, point.point.x + point.buffer);
-        v_min = fminf(v_min, point.point.y - point.buffer);
-        v_max = fmaxf(v_max, point.point.y + point.buffer);
-    }
-    //std::cout << "u min: " << u_min << "\n";
-    //std::cout << "u max: " << u_max << "\n";
-    //std::cout << "v min: " << v_min << "\n";
-    //std::cout << "v max: " << v_max << "\n";
-
-    // Define sun bounding box vertices in the sun's frame
-    std::vector<float2> sun_bounds_sun_frame = {
-        make_float2(u_min, v_min), make_float2(u_max, v_min),   // bottom-left, bottom-right
-        make_float2(u_max, v_max), make_float2(u_min, v_max)    // top-right, top-left
-    };
-
-    // Transform sun bounding box vertices to global frame
-    std::vector<float3> sun_bounds_global_frame;
-    for (const auto& vertex : sun_bounds_sun_frame) {
-        float3 global_vertex = vertex.x * sun_u + vertex.y * sun_v + d * normalize(params.sun_vector);
-        sun_bounds_global_frame.push_back(global_vertex);
-    }
-
-    params.sun_v0 = sun_bounds_global_frame[0];   // bottom-left
-    params.sun_v1 = sun_bounds_global_frame[1];   // bottom-right
-    params.sun_v2 = sun_bounds_global_frame[2];   // top-right
-    params.sun_v3 = sun_bounds_global_frame[3];   // top-left
-}
-
-void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list) {
+void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list,
+                                            LaunchParams& params) {
+    float3 sun_vector = params.sun_vector;
+    
     m_aabb_list.clear(); // Clear the existing AABB list
 	m_sbt_index.clear(); // Clear the existing SBT index list
 	m_geometry_data_array_H.clear(); // Clear the existing geometry data array
@@ -224,6 +96,9 @@ void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<El
 		// print error message 
 		std::cerr << "Error: Unknown surface type for receiver " << std::endl; 
     }
+
+    // print out computed minimum distance 
+	std::cout << "Minimum distance to sun plane: " << m_sun_plane_distance << std::endl;
 }
 
 
@@ -301,8 +176,9 @@ static void buildGas(
     }
 }
 
-void GeometryManager::create_geometries() {
+void GeometryManager::create_geometries(LaunchParams& params) {
 
+	float3 sun_vector = params.sun_vector;
 
 	int obj_count = m_aabb_list.size();
 
@@ -314,11 +190,57 @@ void GeometryManager::create_geometries() {
                obj_count * sizeof(OptixAabb),
                cudaMemcpyHostToDevice));
 
+
+    float* d_sun_plane_dist;
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sun_plane_dist), sizeof(float)));
+
+	compute_d_on_gpu(reinterpret_cast<const OptixAabb*>(d_aabb), obj_count, sun_vector, d_sun_plane_dist);
+
+	CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(&m_sun_plane_distance),
+		reinterpret_cast<void*>(d_sun_plane_dist),
+		sizeof(float),
+		cudaMemcpyDeviceToHost));
+
+    float3 sun_u, sun_v;
+    float3 axis = (abs(sun_vector.x) < 0.9f) ? make_float3(1.0f, 0.0f, 0.0f) : make_float3(0.0f, 1.0f, 0.0f);
+    sun_u = normalize(cross(axis, sun_vector));
+    sun_v = normalize(cross(sun_vector, sun_u));
+
+	// allocate uv bounds on device, float array of size four
+	float sun_u_bounds[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	// allocate memory for the sun_u_bounds on device
+    float* d_sun_u_bounds;
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sun_u_bounds), 4*sizeof(float)));
+
+    compute_uv_bounds_on_gpu(reinterpret_cast<const OptixAabb*>(d_aabb),
+        obj_count,
+        m_sun_plane_distance,
+        sun_vector,
+        sun_u,
+        sun_v,
+        tan(params.max_sun_angle),
+        d_sun_u_bounds);
+
+	// Copy the computed bounds back to the host
+	cudaMemcpy(sun_u_bounds, d_sun_u_bounds, 4 * sizeof(float), cudaMemcpyDeviceToHost);
+
+	float u_min = sun_u_bounds[0];
+	float u_max = sun_u_bounds[1];
+	float v_min = sun_u_bounds[2];
+	float v_max = sun_u_bounds[3];
+    
+    params.sun_v0 = u_min * sun_u + v_min * sun_v + m_sun_plane_distance * sun_vector;
+    params.sun_v1 = u_max * sun_u + v_min * sun_v + m_sun_plane_distance * sun_vector;
+    params.sun_v2 = u_max * sun_u + v_max * sun_v + m_sun_plane_distance * sun_vector;
+    params.sun_v3 = u_min * sun_u + v_max * sun_v + m_sun_plane_distance * sun_vector;
+
+
     // populate aabb_input_flags vector
     std::vector<uint32_t> aabb_input_flags(obj_count);
     for (int i = 0; i < obj_count; i++) {
         aabb_input_flags[i] = OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT;
     }
+
 
 	// device vector for SBT index
     CUdeviceptr d_sbt_index;

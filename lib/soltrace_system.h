@@ -40,7 +40,8 @@ public:
 	/// - AABBs
 	/// - GeometryDataST on the host
 	/// - SBT index
-    void collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list);
+    void collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list,
+                               LaunchParams& params);
 
     /// compute the sun plane with sun vector and a list of AABBs 
     // TODO: need to think about who owns this, pipeline? 
@@ -48,7 +49,7 @@ public:
     void compute_sun_plane(LaunchParams& params);
 
 	/// build the GAS (Geometry Acceleration Structure) using the AABB list, populate optix state
-    void create_geometries();
+    void create_geometries(LaunchParams& params);
 
     /// return the list of geometry data vector
 	std::vector<GeometryDataST>& get_geometry_data_array() { return m_geometry_data_array_H; }
@@ -56,6 +57,8 @@ public:
 
 private: 
 	SoltraceState& m_state;
+	float m_sun_plane_distance = -1.0f; // distance of the sun plane from the origin
+
 
     // data related to the geometry and the scene on the host side
 	std::vector<OptixAabb> m_aabb_list;
