@@ -84,13 +84,14 @@ cmake_minimum_required(VERSION 3.18)
 
 # This sets up the name of our project.  For our purposes the main thing this controls is
 # the name of the VS solution file.
-project(optixSoltrace)
-
+project(optixSoltrace LANGUAGES CXX CUDA)
 # This enforces a particular version of CMake that we require to process the script files
 # properly.  We rely on VERSION_GREATER_EQUAL which requires CMake v. 3.7.
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CUDA_ARCHITECTURES 75;86;89)
+
 
 cmake_policy(VERSION 3.5)
 
@@ -153,7 +154,7 @@ if(WIN32)
   option(CUDA_USE_LOCAL_ENV "Pass the '--use-local-env' option to NVCC; only applies to initial configure" ON)
 endif()
 
-find_package(CUDA 11.0 REQUIRED)
+find_package(CUDA 12.0 REQUIRED)
 # If NVRTC was enabled/disabled, reset OPTIXIR/PTX to default
 set( CUDA_NVRTC_ENABLED OFF CACHE BOOL "Use NVRTC to compile OPTIXIR/PTX at run-time instead of NVCC at build-time" )
 if( NOT ( NOT ( NOT CUDA_NVRTC_ENABLED ) ) EQUAL ( NOT ( NOT CUDA_NVRTC_ENABLED_INTERNAL ) ) )
@@ -193,7 +194,7 @@ endif()
 
 # Helper for fixing compiler flags
 function(replace_flag var old_flag new_flag)
-  string(REPLACE "${old_flag}" "${new_flag}" ${var} ${${var}})
+  string(REPLACE "${old_flag}" "${new_flag}" "${var}" "${${var}}")
   set(${var} "${${var}}" CACHE STRING "Default compiler flags" FORCE)
 endfunction()
 
