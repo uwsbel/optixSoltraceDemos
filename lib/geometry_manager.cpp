@@ -14,9 +14,7 @@
 // ask allie about the abs() part, the distance for buffer calculation and the bin size for flux map computation
 
 void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list,
-                                            LaunchParams& params) {
-    float3 sun_vector = params.sun_vector;
-    
+                                            LaunchParams& params) {    
     m_aabb_list.clear(); // Clear the existing AABB list
 	m_sbt_index.clear(); // Clear the existing SBT index list
 	m_geometry_data_array_H.clear(); // Clear the existing geometry data array

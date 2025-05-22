@@ -107,38 +107,69 @@ __global__ void calculateUVBounds_Kernel( const OptixAabb* all_aabbs_D,
     float* out_uv_bounds_D // Points to [u_min, u_max, v_min, v_max] on GPU
 ) {
 
-    // map aabb index to vertices
-    unsigned int total_vertices = num_aabbs * 8;
-    unsigned int vertex_global_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    extern __shared__ float shared_bounds[]; // size = 4 * blockDim.x
+    float* s_u_min = shared_bounds;
+    float* s_u_max = &shared_bounds[blockDim.x];
+    float* s_v_min = &shared_bounds[2 * blockDim.x];
+    float* s_v_max = &shared_bounds[3 * blockDim.x];
 
-    if (vertex_global_idx >= total_vertices) {
-        return;
+    int tid = threadIdx.x;
+    int global_idx = blockIdx.x * blockDim.x + tid;
+
+    float u_min = FLT_MAX, u_max = -FLT_MAX;
+    float v_min = FLT_MAX, v_max = -FLT_MAX;
+
+    if (global_idx < num_aabbs) {
+        OptixAabb aabb = all_aabbs_D[global_idx];
+        float3 corners[8];
+        getAABBCornersDevice(aabb, corners);
+
+        float3 plane_center = d_plane_distance * sun_vec_norm;
+
+        for (int i = 0; i < 8; ++i) {
+            float3 pt = corners[i];
+
+            float dist_along_sun_axis = abs(dot(pt, sun_vec_norm));
+            float buffer = dist_along_sun_axis * tan_sun_angle;
+
+            float3 projected = pt - dot(pt - plane_center, sun_vec_norm) * sun_vec_norm;
+
+            float u = dot(projected, sun_u);
+            float v = dot(projected, sun_v);
+
+            u_min = fminf(u_min, u - buffer);
+            u_max = fmaxf(u_max, u + buffer);
+            v_min = fminf(v_min, v - buffer);
+            v_max = fmaxf(v_max, v + buffer);
+        }
     }
 
-    // Find which AABB and which corner this vertex_global_idx corresponds to
-    unsigned int aabb_idx = vertex_global_idx / 8;
-    unsigned int corner_idx = vertex_global_idx % 8;
+    // Store to shared memory
+    s_u_min[tid] = u_min;
+    s_u_max[tid] = u_max;
+    s_v_min[tid] = v_min;
+    s_v_max[tid] = v_max;
 
-    OptixAabb current_aabb = all_aabbs_D[aabb_idx];
-    float3 corners[8];
-    getAABBCornersDevice(current_aabb, corners);
-    float3 vertex_point = corners[corner_idx];
+    __syncthreads();
 
-    float dist_along_sun_axis = abs(dot(vertex_point, sun_vec_norm));
-    float buffer = dist_along_sun_axis * tan_sun_angle;
+    // Block-level reduction
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) {
+            s_u_min[tid] = fminf(s_u_min[tid], s_u_min[tid + stride]);
+            s_u_max[tid] = fmaxf(s_u_max[tid], s_u_max[tid + stride]);
+            s_v_min[tid] = fminf(s_v_min[tid], s_v_min[tid + stride]);
+            s_v_max[tid] = fmaxf(s_v_max[tid], s_v_max[tid + stride]);
+        }
+        __syncthreads();
+    }
 
-    float3 plane_center = d_plane_distance * sun_vec_norm;
-    float3 projected_point = vertex_point - dot(vertex_point - plane_center, sun_vec_norm) * sun_vec_norm;
-
-    float u = dot(projected_point, sun_u);
-    float v = dot(projected_point, sun_v);
-
-
-    // TODO: shared memory for this? 
-    atomicMinFloat(&out_uv_bounds_D[0], u - buffer);
-    atomicMaxFloat(&out_uv_bounds_D[1], u + buffer);
-    atomicMinFloat(&out_uv_bounds_D[2], v - buffer);
-    atomicMaxFloat(&out_uv_bounds_D[3], v + buffer);
+    // One thread per block writes the result atomically
+    if (tid == 0) {
+        atomicMinFloat(&out_uv_bounds_D[0], s_u_min[0]);
+        atomicMaxFloat(&out_uv_bounds_D[1], s_u_max[0]);
+        atomicMinFloat(&out_uv_bounds_D[2], s_v_min[0]);
+        atomicMaxFloat(&out_uv_bounds_D[3], s_v_max[0]);
+    }
 }
 
 
@@ -174,11 +205,20 @@ void compute_uv_bounds_on_gpu(
     float initial_bounds[4] = { FLT_MAX, -FLT_MAX, FLT_MAX, -FLT_MAX };
     cudaMemcpy(d_out_uv_bounds, initial_bounds, 4 * sizeof(float), cudaMemcpyHostToDevice);
 
-    unsigned int total_vertices = num_aabbs * 8;
-    if (total_vertices == 0) return;
+    if (num_aabbs == 0) return;
 
     int threads_per_block = 256;
-    int blocks_per_grid = (total_vertices + threads_per_block - 1) / threads_per_block;
+    int blocks_per_grid = (num_aabbs + threads_per_block - 1) / threads_per_block;
+    size_t shared_mem_size = 4 * threads_per_block * sizeof(float); // u_min, u_max, v_min, v_max
 
-    calculateUVBounds_Kernel<<<blocks_per_grid, threads_per_block>>>(d_all_aabbs, num_aabbs, d_plane_val, sun_vector_normalized, sun_u_basis, sun_v_basis, tan_max_angle, d_out_uv_bounds);
+    calculateUVBounds_Kernel<<<blocks_per_grid, threads_per_block, shared_mem_size>>> (
+        d_all_aabbs,
+        num_aabbs,
+        d_plane_val,
+        sun_vector_normalized,
+        sun_u_basis,
+        sun_v_basis,
+        tan_max_angle,
+        d_out_uv_bounds
+        );
 }

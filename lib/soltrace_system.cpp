@@ -50,21 +50,17 @@ void SolTraceSystem::initialize() {
     data_manager->launch_params_H.sun_vector = make_float3(sun_vec[0], sun_vec[1], sun_vec[2]);
     data_manager->launch_params_H.max_sun_angle = m_sun_angle;
 
-    Timer geometry_timer;
-    geometry_timer.start();
-    // compute aabb box 
-	geometry_manager->collect_geometry_info(m_element_list);
-    geometry_manager->create_geometries();
+    Timer AABB_timer;
+    AABB_timer.start();
+	geometry_manager->collect_geometry_info(m_element_list, data_manager->launch_params_H);
+	AABB_timer.stop();
+	std::cout << "Time to compute AABB: " << AABB_timer.get_time_sec() << " seconds" << std::endl;
+
+	Timer geometry_timer;
+	geometry_timer.start();
+    geometry_manager->create_geometries(data_manager->launch_params_H);
     geometry_timer.stop();
 	std::cout << "Time to create geometries: " << geometry_timer.get_time_sec() << " seconds" << std::endl;
-
-
-    Timer sun_timer;
-    sun_timer.start();
-    // compute sun plane vertices
-    geometry_manager->compute_sun_plane(data_manager->launch_params_H);
-    sun_timer.stop();
-	std::cout << "Time to compute sun plane: " << sun_timer.get_time_sec() << " seconds" << std::endl;
 
     // Pipeline setup.
 	Timer pipeline_timer;
@@ -106,7 +102,7 @@ void SolTraceSystem::initialize() {
     data_manager->allocateGeometryDataArray(geometry_manager->get_geometry_data_array());
 
     // print all the field in the launch params
-    if (m_verbose) {
+    //if (m_verbose) {
         std::cout << "print launch params: " << std::endl;
         std::cout << "width: " << data_manager->launch_params_H.width << std::endl;
         std::cout << "height: " << data_manager->launch_params_H.height << std::endl;
@@ -118,7 +114,7 @@ void SolTraceSystem::initialize() {
         std::cout << "sun_v1: " << data_manager->launch_params_H.sun_v1.x << " " << data_manager->launch_params_H.sun_v1.y << " " << data_manager->launch_params_H.sun_v1.z << std::endl;
         std::cout << "sun_v2: " << data_manager->launch_params_H.sun_v2.x << " " << data_manager->launch_params_H.sun_v2.y << " " << data_manager->launch_params_H.sun_v2.z << std::endl;
         std::cout << "sun_v3: " << data_manager->launch_params_H.sun_v3.x << " " << data_manager->launch_params_H.sun_v3.y << " " << data_manager->launch_params_H.sun_v3.z << std::endl;
-    }
+    //}
 
     // copy launch params to device
     data_manager->allocateLaunchParams();
