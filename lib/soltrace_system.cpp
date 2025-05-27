@@ -76,9 +76,6 @@ void SolTraceSystem::initialize() {
     sbt_timer.stop();
 	std::cout << "Time to create SBT: " << sbt_timer.get_time_sec() << " seconds" << std::endl;
 
-
-
-
     // Initialize launch params
     data_manager->launch_params_H.width = m_num_sunpoints;
     data_manager->launch_params_H.height = 1;
@@ -101,6 +98,15 @@ void SolTraceSystem::initialize() {
     data_manager->launch_params_H.handle = m_state.gas_handle;
     data_manager->allocateGeometryDataArray(geometry_manager->get_geometry_data_array());
 
+
+    // compute sun box size
+	float3 sun_box_a = data_manager->launch_params_H.sun_v0 - data_manager->launch_params_H.sun_v1;
+	float3 sun_box_b = data_manager->launch_params_H.sun_v1 - data_manager->launch_params_H.sun_v2;
+
+	float sun_box_edge_a = sqrtf(sun_box_a.x * sun_box_a.x + sun_box_a.y * sun_box_a.y + sun_box_a.z * sun_box_a.z);
+	float sun_box_edge_b = sqrtf(sun_box_b.x * sun_box_b.x + sun_box_b.y * sun_box_b.y + sun_box_b.z * sun_box_b.z);
+
+
     // print all the field in the launch params
     //if (m_verbose) {
         std::cout << "print launch params: " << std::endl;
@@ -114,6 +120,8 @@ void SolTraceSystem::initialize() {
         std::cout << "sun_v1: " << data_manager->launch_params_H.sun_v1.x << " " << data_manager->launch_params_H.sun_v1.y << " " << data_manager->launch_params_H.sun_v1.z << std::endl;
         std::cout << "sun_v2: " << data_manager->launch_params_H.sun_v2.x << " " << data_manager->launch_params_H.sun_v2.y << " " << data_manager->launch_params_H.sun_v2.z << std::endl;
         std::cout << "sun_v3: " << data_manager->launch_params_H.sun_v3.x << " " << data_manager->launch_params_H.sun_v3.y << " " << data_manager->launch_params_H.sun_v3.z << std::endl;
+		std::cout << "sun_box_edge_a: " << sun_box_edge_a << std::endl;
+		std::cout << "sun_box_edge_b: " << sun_box_edge_b << std::endl;
     //}
 
     // copy launch params to device
