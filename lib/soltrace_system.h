@@ -54,20 +54,26 @@ public:
     /// return the list of geometry data vector
 	std::vector<GeometryDataST>& get_geometry_data_array() { return m_geometry_data_array_H; }
 
+    // compute sun plane 
+    void compute_sun_plane_H(LaunchParams& params);
+
 
 private: 
 	SoltraceState& m_state;
 	float m_sun_plane_distance = -1.0f; // distance of the sun plane from the origin
-
+    int m_obj_counts;
 
     // data related to the geometry and the scene on the host side
-	std::vector<OptixAabb> m_aabb_list;
-    std::vector<GeometryDataST> m_geometry_data_array_H; // host-side, geometry data
-    std::vector<uint32_t> m_sbt_index;
+	std::vector<OptixAabb>      m_aabb_list_H;           // aabb list
+    std::vector<GeometryDataST> m_geometry_data_array_H; // geometry data
+    std::vector<uint32_t>       m_sbt_index_H;           // sbt offset index
 
-    // members related to updating the geometryies dynamically
-	OptixBuildInput m_cached_input = {};                 // needed after the first build
-	OptixAccelBuildOptions m_cached_build_options = {};  // needed after the first build
+    // members related to building GAS
+	OptixBuildInput        m_aabb_input = {};                   // needed after the first build
+	OptixAccelBuildOptions m_accel_build_options = {};  // needed after the first build
+	CUdeviceptr            m_aabb_list_D{};          // device pointer to the aabb list
+    
+    
     CUdeviceptr m_d_scratch_refit{};   // persistent scratch
     size_t m_scratch_bytes = 0;   // size of that scratch
 

@@ -19,19 +19,19 @@
 
 void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list,
                                             LaunchParams& params) {    
-    m_aabb_list.clear(); // Clear the existing AABB list
-	m_sbt_index.clear(); // Clear the existing SBT index list
+    m_aabb_list_H.clear(); // Clear the existing AABB list
+    m_sbt_index_H.clear(); // Clear the existing SBT index list
 	m_geometry_data_array_H.clear(); // Clear the existing geometry data array
 
-	int num_objects = element_list.size(); // Number of objects in the scene
+	m_obj_counts = element_list.size(); // Number of objects in the scene
 
 	// Resize
-	m_aabb_list.resize(num_objects);
-	m_geometry_data_array_H.resize(num_objects);
-	m_sbt_index.resize(num_objects); 
+	m_aabb_list_H.resize(m_obj_counts);
+	m_geometry_data_array_H.resize(m_obj_counts);
+    m_sbt_index_H.resize(m_obj_counts);
 
 
-    for (int i = 0; i < num_objects; i++) {
+    for (int i = 0; i < m_obj_counts; i++) {
 
 		std::shared_ptr<Element> element = element_list[i];
 
@@ -79,20 +79,20 @@ void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<El
         aabb.maxZ = m_max.z;
 
 
-		m_aabb_list[i] = aabb; // Store the AABB in the list
-		m_sbt_index[i] = sbt_offset; // Store the SBT index
+		m_aabb_list_H[i] = aabb; // Store the AABB in the list
+        m_sbt_index_H[i] = sbt_offset; // Store the SBT index
         m_geometry_data_array_H[i] = element_list[i]->toDeviceGeometryData();
     }
 
 
     // add receiver sbt_index
-	std::shared_ptr<Element> receiver = element_list[num_objects - 1];
+	std::shared_ptr<Element> receiver = element_list[m_obj_counts - 1];
 
     if (receiver->get_surface_type() == SurfaceType::FLAT) {
-        m_sbt_index[num_objects-1] = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_FLAT_RECEIVER);
+        m_sbt_index_H[m_obj_counts -1] = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_FLAT_RECEIVER);
     }
     else if (receiver->get_surface_type() == SurfaceType::CYLINDER) {
-        m_sbt_index[num_objects-1] = static_cast<uint32_t>(OpticalEntityType::CYLINDRICAL_RECEIVER);
+        m_sbt_index_H[m_obj_counts -1] = static_cast<uint32_t>(OpticalEntityType::CYLINDRICAL_RECEIVER);
     }
     else {
 		// print error message 
@@ -181,120 +181,110 @@ static void buildGas(
     }
 }
 
-void GeometryManager::create_geometries(LaunchParams& params) {
 
-	float3 sun_vector = params.sun_vector;
+void GeometryManager::compute_sun_plane_H(LaunchParams& params) {
 
-	int obj_count = m_aabb_list.size();
+    float3 sun_vector = params.sun_vector;
 
-    // Allocate memory on the device for the AABB array.
-    CUdeviceptr d_aabb;
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_aabb), obj_count * sizeof(OptixAabb)));
-    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_aabb), 
-               m_aabb_list.data(), 
-               obj_count * sizeof(OptixAabb),
-               cudaMemcpyHostToDevice));
+    float* sun_plane_dist_D;
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&sun_plane_dist_D), sizeof(float)));
 
+    compute_d_on_gpu(reinterpret_cast<const OptixAabb*>(m_aabb_list_D), m_obj_counts, sun_vector, sun_plane_dist_D);
 
-    float* d_sun_plane_dist;
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sun_plane_dist), sizeof(float)));
-
-	compute_d_on_gpu(reinterpret_cast<const OptixAabb*>(d_aabb), obj_count, sun_vector, d_sun_plane_dist);
-
-	CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(&m_sun_plane_distance),
-		reinterpret_cast<void*>(d_sun_plane_dist),
-		sizeof(float),
-		cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(&m_sun_plane_distance),
+                         reinterpret_cast<void*>(sun_plane_dist_D),
+                         sizeof(float),
+                         cudaMemcpyDeviceToHost));
 
     float3 sun_u, sun_v;
     float3 axis = (abs(sun_vector.x) < 0.9f) ? make_float3(1.0f, 0.0f, 0.0f) : make_float3(0.0f, 1.0f, 0.0f);
     sun_u = normalize(cross(axis, sun_vector));
     sun_v = normalize(cross(sun_vector, sun_u));
+    // allocate uv bounds on device, float array of size four
+    float sun_uv_bounds[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    // allocate memory for the sun_u_bounds on device
+    float* sun_uv_bounds_D;
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&sun_uv_bounds_D), 4 * sizeof(float)));
 
-	// allocate uv bounds on device, float array of size four
-	float sun_u_bounds[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-	// allocate memory for the sun_u_bounds on device
-    float* d_sun_u_bounds;
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sun_u_bounds), 4*sizeof(float)));
-
-    compute_uv_bounds_on_gpu(reinterpret_cast<const OptixAabb*>(d_aabb),
-        obj_count,
+    compute_uv_bounds_on_gpu(reinterpret_cast<const OptixAabb*>(m_aabb_list_D),
+        m_obj_counts,
         m_sun_plane_distance,
         sun_vector,
         sun_u,
         sun_v,
         tan(params.max_sun_angle),
-        d_sun_u_bounds);
+        sun_uv_bounds_D);
 
-	// Copy the computed bounds back to the host
-	cudaMemcpy(sun_u_bounds, d_sun_u_bounds, 4 * sizeof(float), cudaMemcpyDeviceToHost);
+    // Copy the computed bounds back to the host
+    cudaMemcpy(sun_uv_bounds, sun_uv_bounds_D, 4 * sizeof(float), cudaMemcpyDeviceToHost);
 
-	float u_min = sun_u_bounds[0];
-	float u_max = sun_u_bounds[1];
-	float v_min = sun_u_bounds[2];
-	float v_max = sun_u_bounds[3];
-    
+    float u_min = sun_uv_bounds[0];
+    float u_max = sun_uv_bounds[1];
+    float v_min = sun_uv_bounds[2];
+    float v_max = sun_uv_bounds[3];
+
     params.sun_v0 = u_min * sun_u + v_min * sun_v + m_sun_plane_distance * sun_vector;
     params.sun_v1 = u_max * sun_u + v_min * sun_v + m_sun_plane_distance * sun_vector;
     params.sun_v2 = u_max * sun_u + v_max * sun_v + m_sun_plane_distance * sun_vector;
     params.sun_v3 = u_min * sun_u + v_max * sun_v + m_sun_plane_distance * sun_vector;
 
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(sun_plane_dist_D)));
+    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(sun_uv_bounds_D)));
 
-    // populate aabb_input_flags vector
+}
+
+void GeometryManager::create_geometries(LaunchParams& params) {
+
+    // Allocate memory on the device for the AABB array.
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_aabb_list_D), m_obj_counts * sizeof(OptixAabb)));
+    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(m_aabb_list_D),
+               m_aabb_list_H.data(), 
+		       m_obj_counts * sizeof(OptixAabb),
+               cudaMemcpyHostToDevice));
+
+	compute_sun_plane_H(params);
+
+    // populate aabb_input_flags vector, size of types, no rebuild
     std::vector<uint32_t> aabb_input_flags(NUM_OPTICAL_ENTITY_TYPES);
     for (int i = 0; i < NUM_OPTICAL_ENTITY_TYPES; i++) {
         aabb_input_flags[i] = OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT;
     }
 
-
-	// device vector for SBT index
+	// device vector for SBT index, no need to rebuild
     CUdeviceptr d_sbt_index;
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sbt_index), obj_count * sizeof(uint32_t)));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sbt_index), m_obj_counts * sizeof(uint32_t)));
     CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(d_sbt_index),
-                          m_sbt_index.data(),
-                          obj_count * sizeof(uint32_t), 
+                          m_sbt_index_H.data(),
+        m_obj_counts * sizeof(uint32_t),
                           cudaMemcpyHostToDevice));
 
     // Configure the input for the GAS build process.
-    OptixBuildInput aabb_input = {};
-    aabb_input.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
-    aabb_input.customPrimitiveArray.aabbBuffers = &d_aabb;
-    aabb_input.customPrimitiveArray.flags = aabb_input_flags.data();
-    aabb_input.customPrimitiveArray.numSbtRecords = NUM_OPTICAL_ENTITY_TYPES;
-    aabb_input.customPrimitiveArray.numPrimitives = obj_count;
-    aabb_input.customPrimitiveArray.sbtIndexOffsetBuffer = d_sbt_index;
-    aabb_input.customPrimitiveArray.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
-    aabb_input.customPrimitiveArray.primitiveIndexOffset = 0;
+    m_aabb_input.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
+    m_aabb_input.customPrimitiveArray.aabbBuffers = &m_aabb_list_D;
+    m_aabb_input.customPrimitiveArray.flags = aabb_input_flags.data();
+    m_aabb_input.customPrimitiveArray.numSbtRecords = NUM_OPTICAL_ENTITY_TYPES;
+    m_aabb_input.customPrimitiveArray.numPrimitives = m_obj_counts;
+    m_aabb_input.customPrimitiveArray.sbtIndexOffsetBuffer = d_sbt_index;
+    m_aabb_input.customPrimitiveArray.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
+    m_aabb_input.customPrimitiveArray.primitiveIndexOffset = 0;
 
     // Set up acceleration structure (AS) build options.
-    OptixAccelBuildOptions accel_options = {
+    m_accel_build_options = {
 		OPTIX_BUILD_FLAG_ALLOW_COMPACTION |   // enable compaction to reduce memory usage.
-        OPTIX_BUILD_FLAG_ALLOW_UPDATE,  // allow update
-        OPTIX_BUILD_OPERATION_BUILD         // operation. Build a new acceleration structure (not an update).
+        OPTIX_BUILD_FLAG_ALLOW_UPDATE,        // allow update
+        OPTIX_BUILD_OPERATION_BUILD           // operation type, build a new aceleration structure
     };
 
     // Build the GAS using the defined AABBs and options.
     buildGas(m_state,                        // input:  state with OptiX context.
-             accel_options,                  // input:  build options.
-             aabb_input,                     // input:  AABB input description.
+             m_accel_build_options,          // input:  build options.
+             m_aabb_input,                   // input:  AABB input description.
              m_state.gas_handle,             // output: traversable handle for the GAS.
              m_state.d_gas_output_buffer,    // output: device buffer for the GAS.
-		     m_scratch_bytes);   // output: size of the scratch buffer used for building the GAS.
-
-    CUDA_CHECK(cudaFree((void*)d_aabb));
-    CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_sbt_index)));
-
-
-    // keep aabb input and options for dynamic updates 
-	m_cached_input = aabb_input; // store the input for dynamic updates
-	m_cached_build_options = accel_options; // store the build options for dynamic updates
+		     m_scratch_bytes);               // output: size of the scratch buffer 
 
 	// store the scratch buffer for refit
 	CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_d_scratch_refit), m_scratch_bytes));
-
-    // free the sun plane distance buffer
-	CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_sun_plane_dist)));
-	CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_sun_u_bounds)));
 }
 
 
@@ -303,22 +293,22 @@ void GeometryManager::update_geometry_info(const std::vector<std::shared_ptr<Ele
 	// Recollect geometry info
 	collect_geometry_info(element_list, params);
 
-	CUdeviceptr d_aabb = m_cached_input.customPrimitiveArray.aabbBuffers[0]; // get the device pointer to the AABB buffer
+	CUdeviceptr d_aabb = m_aabb_input.customPrimitiveArray.aabbBuffers[0]; // get the device pointer to the AABB buffer
 
     CUDA_CHECK(cudaMemcpyAsync(
         reinterpret_cast<void*>(d_aabb),
-        m_aabb_list.data(),
-        m_aabb_list.size() * sizeof(OptixAabb),
+        m_aabb_list_H.data(),
+        m_aabb_list_H.size() * sizeof(OptixAabb),
         cudaMemcpyHostToDevice, m_state.stream));
 
-	m_cached_build_options.operation = OPTIX_BUILD_OPERATION_UPDATE; // set to update 
+    m_accel_build_options.operation = OPTIX_BUILD_OPERATION_UPDATE; // set to update 
 
     //// GAS build
     //OPTIX_CHECK(optixAccelBuild(
     //    m_state.context,
     //    m_state.stream,
     //    &m_cached_build_options,
-    //    &m_cached_input, 
+    //    &m_aabb_input, 
     //    1,
     //    m_d_scratch_refit, 
     //    m_scratch_bytes,
@@ -327,50 +317,4 @@ void GeometryManager::update_geometry_info(const std::vector<std::shared_ptr<Ele
     //    0));
 
     // update sun plane as well.
-
-	int obj_count = m_aabb_list.size();
-	float3 sun_vector = params.sun_vector;    
-    
-    float* d_sun_plane_dist;
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sun_plane_dist), sizeof(float)));
-
-    compute_d_on_gpu(reinterpret_cast<const OptixAabb*>(d_aabb), obj_count, sun_vector, d_sun_plane_dist);
-
-    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(&m_sun_plane_distance),
-        reinterpret_cast<void*>(d_sun_plane_dist),
-        sizeof(float),
-        cudaMemcpyDeviceToHost));
-
-    float3 sun_u, sun_v;
-    float3 axis = (abs(sun_vector.x) < 0.9f) ? make_float3(1.0f, 0.0f, 0.0f) : make_float3(0.0f, 1.0f, 0.0f);
-    sun_u = normalize(cross(axis, sun_vector));
-    sun_v = normalize(cross(sun_vector, sun_u));
-
-    // allocate uv bounds on device, float array of size four
-    float sun_u_bounds[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    // allocate memory for the sun_u_bounds on device
-    float* d_sun_u_bounds;
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sun_u_bounds), 4 * sizeof(float)));
-
-    compute_uv_bounds_on_gpu(reinterpret_cast<const OptixAabb*>(d_aabb),
-        obj_count,
-        m_sun_plane_distance,
-        sun_vector,
-        sun_u,
-        sun_v,
-        tan(params.max_sun_angle),
-        d_sun_u_bounds);
-
-    // Copy the computed bounds back to the host
-    cudaMemcpy(sun_u_bounds, d_sun_u_bounds, 4 * sizeof(float), cudaMemcpyDeviceToHost);
-
-    float u_min = sun_u_bounds[0];
-    float u_max = sun_u_bounds[1];
-    float v_min = sun_u_bounds[2];
-    float v_max = sun_u_bounds[3];
-
-    params.sun_v0 = u_min * sun_u + v_min * sun_v + m_sun_plane_distance * sun_vector;
-    params.sun_v1 = u_max * sun_u + v_min * sun_v + m_sun_plane_distance * sun_vector;
-    params.sun_v2 = u_max * sun_u + v_max * sun_v + m_sun_plane_distance * sun_vector;
-    params.sun_v3 = u_min * sun_u + v_max * sun_v + m_sun_plane_distance * sun_vector;
 }
