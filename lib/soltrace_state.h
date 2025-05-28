@@ -28,9 +28,5 @@ struct SoltraceState
 
     CUstream                    stream                          = 0;
     
- //   soltrace::LaunchParams*     d_params                        = nullptr;
-	//GeometryDataST*             d_geometry_data_array           = nullptr;
-	//float4*                     d_hit_point_buffer              = nullptr;
-
     OptixShaderBindingTable     sbt                             = {};
 };

@@ -7,6 +7,10 @@
 #include <optix.h>
 #include <vector>
 
+// TODO 
+// need to extractr sun plane 
+
+
 
 // this one need to be refactored
 // note that the sun plane is part of the pre-processing, need to be able to 
@@ -107,7 +111,8 @@ static void buildGas(
     const OptixAccelBuildOptions& accel_options,
     const OptixBuildInput& build_input,
     OptixTraversableHandle& gas_handle,
-    CUdeviceptr& d_gas_output_buffer) {
+    CUdeviceptr& d_gas_output_buffer,
+    size_t& scratch_bytes) {
 
     OptixAccelBufferSizes gas_buffer_sizes;     // Holds required sizes for temp and output buffers.
     CUdeviceptr d_temp_buffer_gas;              // Temporary buffer for building the GAS.
@@ -119,6 +124,8 @@ static void buildGas(
         &build_input,
         1,
         &gas_buffer_sizes));
+
+	scratch_bytes = gas_buffer_sizes.tempSizeInBytes; // Store the scratch size for later use
 
     // Allocate memory for the temporary buffer on the device.
     CUDA_CHECK(cudaMalloc(
@@ -261,7 +268,8 @@ void GeometryManager::create_geometries(LaunchParams& params) {
 
     // Set up acceleration structure (AS) build options.
     OptixAccelBuildOptions accel_options = {
-        OPTIX_BUILD_FLAG_ALLOW_COMPACTION,  // buildFlags. Enable compaction to reduce memory usage.
+		OPTIX_BUILD_FLAG_ALLOW_COMPACTION |   // enable compaction to reduce memory usage.
+        OPTIX_BUILD_FLAG_ALLOW_UPDATE,  // allow update
         OPTIX_BUILD_OPERATION_BUILD         // operation. Build a new acceleration structure (not an update).
     };
 
@@ -270,8 +278,99 @@ void GeometryManager::create_geometries(LaunchParams& params) {
              accel_options,                  // input:  build options.
              aabb_input,                     // input:  AABB input description.
              m_state.gas_handle,             // output: traversable handle for the GAS.
-             m_state.d_gas_output_buffer);   // output: device buffer for the GAS.
+             m_state.d_gas_output_buffer,    // output: device buffer for the GAS.
+		     m_scratch_bytes);   // output: size of the scratch buffer used for building the GAS.
 
     CUDA_CHECK(cudaFree((void*)d_aabb));
     CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_sbt_index)));
+
+
+    // keep aabb input and options for dynamic updates 
+	m_cached_input = aabb_input; // store the input for dynamic updates
+	m_cached_build_options = accel_options; // store the build options for dynamic updates
+
+	// store the scratch buffer for refit
+	CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_d_scratch_refit), m_scratch_bytes));
+
+    // free the sun plane distance buffer
+	CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_sun_plane_dist)));
+	CUDA_CHECK(cudaFree(reinterpret_cast<void*>(d_sun_u_bounds)));
+}
+
+
+void GeometryManager::update_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list,
+	LaunchParams& params) {
+	// Recollect geometry info
+	collect_geometry_info(element_list, params);
+
+	CUdeviceptr d_aabb = m_cached_input.customPrimitiveArray.aabbBuffers[0]; // get the device pointer to the AABB buffer
+
+    CUDA_CHECK(cudaMemcpyAsync(
+        reinterpret_cast<void*>(d_aabb),
+        m_aabb_list.data(),
+        m_aabb_list.size() * sizeof(OptixAabb),
+        cudaMemcpyHostToDevice, m_state.stream));
+
+	m_cached_build_options.operation = OPTIX_BUILD_OPERATION_UPDATE; // set to update 
+
+    //// GAS build
+    //OPTIX_CHECK(optixAccelBuild(
+    //    m_state.context,
+    //    m_state.stream,
+    //    &m_cached_build_options,
+    //    &m_cached_input, 
+    //    1,
+    //    m_d_scratch_refit, 
+    //    m_scratch_bytes,
+    //    m_state.d_gas_output_buffer,     // same output buffer
+    //    nullptr, 
+    //    0));
+
+    // update sun plane as well.
+
+	int obj_count = m_aabb_list.size();
+	float3 sun_vector = params.sun_vector;    
+    
+    float* d_sun_plane_dist;
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sun_plane_dist), sizeof(float)));
+
+    compute_d_on_gpu(reinterpret_cast<const OptixAabb*>(d_aabb), obj_count, sun_vector, d_sun_plane_dist);
+
+    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(&m_sun_plane_distance),
+        reinterpret_cast<void*>(d_sun_plane_dist),
+        sizeof(float),
+        cudaMemcpyDeviceToHost));
+
+    float3 sun_u, sun_v;
+    float3 axis = (abs(sun_vector.x) < 0.9f) ? make_float3(1.0f, 0.0f, 0.0f) : make_float3(0.0f, 1.0f, 0.0f);
+    sun_u = normalize(cross(axis, sun_vector));
+    sun_v = normalize(cross(sun_vector, sun_u));
+
+    // allocate uv bounds on device, float array of size four
+    float sun_u_bounds[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    // allocate memory for the sun_u_bounds on device
+    float* d_sun_u_bounds;
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_sun_u_bounds), 4 * sizeof(float)));
+
+    compute_uv_bounds_on_gpu(reinterpret_cast<const OptixAabb*>(d_aabb),
+        obj_count,
+        m_sun_plane_distance,
+        sun_vector,
+        sun_u,
+        sun_v,
+        tan(params.max_sun_angle),
+        d_sun_u_bounds);
+
+    // Copy the computed bounds back to the host
+    cudaMemcpy(sun_u_bounds, d_sun_u_bounds, 4 * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float u_min = sun_u_bounds[0];
+    float u_max = sun_u_bounds[1];
+    float v_min = sun_u_bounds[2];
+    float v_max = sun_u_bounds[3];
+
+    params.sun_v0 = u_min * sun_u + v_min * sun_v + m_sun_plane_distance * sun_vector;
+    params.sun_v1 = u_max * sun_u + v_min * sun_v + m_sun_plane_distance * sun_vector;
+    params.sun_v2 = u_max * sun_u + v_max * sun_v + m_sun_plane_distance * sun_vector;
+    params.sun_v3 = u_min * sun_u + v_max * sun_v + m_sun_plane_distance * sun_vector;
 }

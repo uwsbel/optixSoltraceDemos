@@ -23,20 +23,13 @@ size_t LOG_SIZE = sizeof(LOG);
 
 
 const char* intersectionFuncs[] = {
-    "__intersection__parallelogram",
     "__intersection__rectangle_parabolic",
     "__intersection__rectangle_flat"
 };
 
 const char* closestHitFuncs[] = {
-    "__closesthit__mirror",
     "__closesthit__mirror__parabolic",
 	"__closesthit__mirror"
-};
-
-const char* closestHitReceiverFuncs[] = {
-	"__closesthit__receiver",
-	"__closesthit__receiver__cylinder__y"
 };
 
 pipelineManager::pipelineManager(SoltraceState& state) : m_state(state) {}
@@ -303,6 +296,14 @@ void pipelineManager::createMissProgram()
 
     m_program_groups.push_back(group);
     m_state.radiance_miss_prog_group = group;
+
+// now let's print out program groups address 
+	for (int i = 0; i < m_program_groups.size(); i++) {
+		OptixProgramGroup group = m_program_groups[i];
+		std::cout << "Program group " << i << " address: " << group << ", kind: " << desc.kind << std::endl;
+	}   
+
+
 }
 
 
@@ -315,12 +316,12 @@ OptixProgramGroup pipelineManager::getMirrorProgram(SurfaceApertureMap map) cons
     if (map.apertureType == ApertureType::RECTANGLE) {
         if (map.surfaceType == SurfaceType::FLAT) {
             //std::cout << "returning mirror program group 3, easy rectangle flat" << std::endl;
-            return m_program_groups[3];
+            return m_program_groups[2];
         }
 
         else if (map.surfaceType == SurfaceType::PARABOLIC) {
             //std::cout << "returning mirror program group 2, rectangle parabolic" << std::endl;
-            return m_program_groups[2];
+            return m_program_groups[1];
 		}
 
     }

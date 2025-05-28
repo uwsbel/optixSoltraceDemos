@@ -166,6 +166,15 @@ void SolTraceSystem::run() {
 
 }
 
+void SolTraceSystem::update() {
+
+    // geometry manager 
+	geometry_manager->update_geometry_info(m_element_list, data_manager->launch_params_H);
+
+	// Update the launch parameters on the device.
+	data_manager->updateLaunchParams();
+}
+
 bool SolTraceSystem::read_st_input(const char* filename) {
     FILE* fp = fopen(filename, "r");
 	if (!fp)
@@ -355,20 +364,26 @@ void SolTraceSystem::create_shader_binding_table(){
 				map = { SurfaceType::FLAT, ApertureType::RECTANGLE };
                 program_group_handle = pipeline_manager->getMirrorProgram(map);
                 hitgroup_records_list[i].data.material_data.mirror = {0.875425, 0, 0, 0};
-
+                printf("RECTANGLE_FLAT_MIRROR, program group address: %p \n", program_group_handle);
 				break;
             case soltrace::OpticalEntityType::RECTANGLE_PARABOLIC_MIRROR:
                 map = { SurfaceType::PARABOLIC, ApertureType::RECTANGLE };
                 program_group_handle = pipeline_manager->getMirrorProgram(map);
                 hitgroup_records_list[i].data.material_data.mirror = { 0.875425, 0, 0, 0 };
+                printf("RECTANGLE_PARABOLIC_MIRROR, program group address: %p \n", program_group_handle);
+
                 break;
             case soltrace::OpticalEntityType::RECTANGLE_FLAT_RECEIVER:
                 program_group_handle = pipeline_manager->getReceiverProgram(SurfaceType::FLAT);
 				hitgroup_records_list[i].data.material_data.receiver = { 0.95, 0, 0, 0 };
+                printf("RECTANGLE_FLAT_RECEIVER, program group address: %p \n", program_group_handle);
+
                 break;
             case soltrace::OpticalEntityType::CYLINDRICAL_RECEIVER:
                 program_group_handle = pipeline_manager->getReceiverProgram(SurfaceType::CYLINDER);
                 hitgroup_records_list[i].data.material_data.receiver = { 0.95, 0, 0, 0 };
+                printf("CYLINDRICAL_RECEIVER, program group address: %p \n", program_group_handle);
+
                 break;            
             default:
 				std::cerr << "Unknown OpticalEntityType: " << my_type << std::endl;

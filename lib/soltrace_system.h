@@ -43,13 +43,13 @@ public:
     void collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list,
                                LaunchParams& params);
 
-    /// compute the sun plane with sun vector and a list of AABBs 
-    // TODO: need to think about who owns this, pipeline? 
-    // TODO: create sun class
-    void compute_sun_plane(LaunchParams& params);
-
 	/// build the GAS (Geometry Acceleration Structure) using the AABB list, populate optix state
     void create_geometries(LaunchParams& params);
+
+
+	/// update the GAS (Geometry Acceleration Structure) using the AABB list, populate optix state
+	void update_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list,
+        LaunchParams& params);
 
     /// return the list of geometry data vector
 	std::vector<GeometryDataST>& get_geometry_data_array() { return m_geometry_data_array_H; }
@@ -64,6 +64,13 @@ private:
 	std::vector<OptixAabb> m_aabb_list;
     std::vector<GeometryDataST> m_geometry_data_array_H; // host-side, geometry data
     std::vector<uint32_t> m_sbt_index;
+
+    // members related to updating the geometryies dynamically
+	OptixBuildInput m_cached_input = {};                 // needed after the first build
+	OptixAccelBuildOptions m_cached_build_options = {};  // needed after the first build
+    CUdeviceptr m_d_scratch_refit{};   // persistent scratch
+    size_t m_scratch_bytes = 0;   // size of that scratch
+
 };
 
 /**
@@ -85,6 +92,9 @@ public:
 
     /// Execute the ray tracing simulation
     void run();
+
+    /// Update launch params
+    void update();
 
     // Read a stinput file for the simulation setup.
     bool read_st_input(const char* filename);

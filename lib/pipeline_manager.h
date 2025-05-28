@@ -127,7 +127,7 @@ private:
 
     // Number of program groups categorized by type.
     int num_raygen_programs = 1; ///< Number of ray generation programs.
-    int num_heliostat_programs = 3; ///< Number of heliostat-related programs.
+    int num_heliostat_programs = 2; ///< Number of heliostat-related programs.
     int num_receiver_programs = 2; ///< Number of receiver-related programs.
     int num_miss_programs = 1; ///< Number of miss programs.
 };
