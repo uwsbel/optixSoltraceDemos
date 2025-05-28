@@ -234,8 +234,8 @@ void GeometryManager::create_geometries(LaunchParams& params) {
 
 
     // populate aabb_input_flags vector
-    std::vector<uint32_t> aabb_input_flags(obj_count);
-    for (int i = 0; i < obj_count; i++) {
+    std::vector<uint32_t> aabb_input_flags(NUM_OPTICAL_ENTITY_TYPES);
+    for (int i = 0; i < NUM_OPTICAL_ENTITY_TYPES; i++) {
         aabb_input_flags[i] = OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT;
     }
 
@@ -253,7 +253,7 @@ void GeometryManager::create_geometries(LaunchParams& params) {
     aabb_input.type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
     aabb_input.customPrimitiveArray.aabbBuffers = &d_aabb;
     aabb_input.customPrimitiveArray.flags = aabb_input_flags.data();
-    aabb_input.customPrimitiveArray.numSbtRecords = obj_count;
+    aabb_input.customPrimitiveArray.numSbtRecords = NUM_OPTICAL_ENTITY_TYPES;
     aabb_input.customPrimitiveArray.numPrimitives = obj_count;
     aabb_input.customPrimitiveArray.sbtIndexOffsetBuffer = d_sbt_index;
     aabb_input.customPrimitiveArray.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
