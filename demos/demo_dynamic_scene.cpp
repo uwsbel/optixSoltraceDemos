@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 	// Element 3
 	Vector3d origin_e3(5, 0, 0); // origin of the element
 	Vector3d aim_point_e3(-17.360680, 0, 94.721360); // aim point of the element
-	// z of aimpoint can go all the way to 100
+	// z of aimpoint can go all the way to 100 
 	//Vector3d aim_point_e3(0, 0, 9.5);
 
 	double zrot_e3 = -90.0; // 
@@ -80,22 +80,21 @@ int main(int argc, char* argv[]) {
 
 	int frame = 0;
 
-	//while (true) {
+	while (true) {
 
 		system.run();
-
-		//aim_point_e3[2] += 0.5;
-		//e3->update_element(aim_point_e3, zrot_e3);
-
-		//system.update();
-		//if (aim_point_e3[2] < receiver_origin[2] + receiver_dim_y / 2.) {
-		//	break; // stop when the aim point is too high
-		//}
-
 		std::string filename = "output_dynamic_" + std::to_string(frame) + ".csv";
 		system.write_output(filename);
 
-	//}
+		aim_point_e3[2] += 1;
+		e3->update_element(aim_point_e3, zrot_e3);
+
+		system.update();
+		if (frame < 5) {
+			break; // stop when the aim point is too high
+		}
+		frame++;
+	}
 
 	system.clean_up();
 	return 0;

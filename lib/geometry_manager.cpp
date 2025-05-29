@@ -104,84 +104,6 @@ void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<El
 }
 
 
-
-// Build a GAS (Geometry Acceleration Structure) for the scene.
-static void buildGas(
-    const SoltraceState& state,
-    const OptixAccelBuildOptions& accel_options,
-    const OptixBuildInput& build_input,
-    OptixTraversableHandle& gas_handle,
-    CUdeviceptr& d_gas_output_buffer,
-    size_t& scratch_bytes) {
-
-    OptixAccelBufferSizes gas_buffer_sizes;     // Holds required sizes for temp and output buffers.
-    CUdeviceptr d_temp_buffer_gas;              // Temporary buffer for building the GAS.
-
-    // Query the memory usage required for building the GAS.
-    OPTIX_CHECK(optixAccelComputeMemoryUsage(
-        state.context,
-        &accel_options,
-        &build_input,
-        1,
-        &gas_buffer_sizes));
-
-	scratch_bytes = gas_buffer_sizes.tempSizeInBytes; // Store the scratch size for later use
-
-    // Allocate memory for the temporary buffer on the device.
-    CUDA_CHECK(cudaMalloc(
-        reinterpret_cast<void**>(&d_temp_buffer_gas),
-        gas_buffer_sizes.tempSizeInBytes));
-
-    // Non-compacted output and size of compacted GAS
-    CUdeviceptr d_buffer_temp_output_gas_and_compacted_size;
-    size_t compactedSizeOffset = roundUp<size_t>(gas_buffer_sizes.outputSizeInBytes, 8ull);
-    CUDA_CHECK(cudaMalloc(
-        reinterpret_cast<void**>(&d_buffer_temp_output_gas_and_compacted_size),
-        compactedSizeOffset + 8
-    ));
-
-    // Emit property to store the compacted GAS size.
-    OptixAccelEmitDesc emitProperty = {};
-    emitProperty.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
-    emitProperty.result = (CUdeviceptr)((char*)d_buffer_temp_output_gas_and_compacted_size + compactedSizeOffset);
-
-    // Build the GAS.
-    OPTIX_CHECK(optixAccelBuild(
-        state.context,                                  // OptiX context
-        0,                                              // CUDA stream (default is 0)
-        &accel_options,                                 // Acceleration build options
-        &build_input,                                   // Build inputs
-        1,                                              // Number of build inputs
-        d_temp_buffer_gas,                              // Temporary buffer
-        gas_buffer_sizes.tempSizeInBytes,               // Size of temporary buffer
-        d_buffer_temp_output_gas_and_compacted_size,    // Output buffer
-        gas_buffer_sizes.outputSizeInBytes,             // Size of output buffer
-        &gas_handle,                                    // Output handle
-        &emitProperty,                                  // Emitted properties
-        1));                                           // Number of emitted properties
-
-    CUDA_CHECK(cudaFree((void*)d_temp_buffer_gas));
-
-    size_t compacted_gas_size;
-    CUDA_CHECK(cudaMemcpy(&compacted_gas_size, (void*)emitProperty.result, sizeof(size_t), cudaMemcpyDeviceToHost));
-
-    // If the compacted GAS size is smaller, allocate a smaller buffer and compact the GAS
-    if (compacted_gas_size < gas_buffer_sizes.outputSizeInBytes)
-    {
-        CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_gas_output_buffer), compacted_gas_size));
-
-        // use handle as input and output
-        OPTIX_CHECK(optixAccelCompact(state.context, 0, gas_handle, d_gas_output_buffer, compacted_gas_size, &gas_handle));
-
-        CUDA_CHECK(cudaFree((void*)d_buffer_temp_output_gas_and_compacted_size));
-    }
-    else
-    {
-        d_gas_output_buffer = d_buffer_temp_output_gas_and_compacted_size;
-    }
-}
-
-
 void GeometryManager::compute_sun_plane_H(LaunchParams& params) {
 
     float3 sun_vector = params.sun_vector;
@@ -270,21 +192,39 @@ void GeometryManager::create_geometries(LaunchParams& params) {
 
     // Set up acceleration structure (AS) build options.
     m_accel_build_options = {
-		OPTIX_BUILD_FLAG_ALLOW_COMPACTION |   // enable compaction to reduce memory usage.
         OPTIX_BUILD_FLAG_ALLOW_UPDATE,        // allow update
         OPTIX_BUILD_OPERATION_BUILD           // operation type, build a new aceleration structure
     };
 
-    // Build the GAS using the defined AABBs and options.
-    buildGas(m_state,                        // input:  state with OptiX context.
-             m_accel_build_options,          // input:  build options.
-             m_aabb_input,                   // input:  AABB input description.
-             m_state.gas_handle,             // output: traversable handle for the GAS.
-             m_state.d_gas_output_buffer,    // output: device buffer for the GAS.
-		     m_scratch_bytes);               // output: size of the scratch buffer 
+    OptixAccelBufferSizes gas_buffer_sizes;     // sizes for temp and output buffers.
 
-	// store the scratch buffer for refit
-	CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_d_scratch_refit), m_scratch_bytes));
+    // Query the memory usage required for building the GAS.
+	OPTIX_CHECK(optixAccelComputeMemoryUsage(m_state.context, 
+                                             &m_accel_build_options, 
+                                             &m_aabb_input,
+                                             1,
+                                             &gas_buffer_sizes));
+
+    m_temp_buffer_size   = gas_buffer_sizes.tempSizeInBytes;
+    m_output_buffer_size = gas_buffer_sizes.outputSizeInBytes;
+
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_temp_buffer),   m_temp_buffer_size));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&m_output_buffer), m_output_buffer_size));
+
+    // Build the GAS.
+	OPTIX_CHECK(optixAccelBuild(m_state.context,								  // OptiX context
+		m_state.stream,                                  // CUDA stream (default is 0)
+        &m_accel_build_options,
+        &m_aabb_input,
+        1,
+        m_temp_buffer,
+        m_temp_buffer_size,
+        m_output_buffer,
+        m_output_buffer_size,
+		&m_state.gas_handle,                             // Output handle for the GAS
+		nullptr,                                        // Emitted properties (not used here)
+		0));                                           // Number of emitted properties
+    
 }
 
 
@@ -293,28 +233,34 @@ void GeometryManager::update_geometry_info(const std::vector<std::shared_ptr<Ele
 	// Recollect geometry info
 	collect_geometry_info(element_list, params);
 
-	CUdeviceptr d_aabb = m_aabb_input.customPrimitiveArray.aabbBuffers[0]; // get the device pointer to the AABB buffer
+    // update device aabb list
+	CUDA_CHECK(cudaMemcpyAsync(
+		reinterpret_cast<void*>(m_aabb_list_D),
+		m_aabb_list_H.data(),
+		m_aabb_list_H.size() * sizeof(OptixAabb),
+		cudaMemcpyHostToDevice, m_state.stream));
 
     CUDA_CHECK(cudaMemcpyAsync(
-        reinterpret_cast<void*>(d_aabb),
+        reinterpret_cast<void*>(m_aabb_input.customPrimitiveArray.aabbBuffers[0]),
         m_aabb_list_H.data(),
         m_aabb_list_H.size() * sizeof(OptixAabb),
         cudaMemcpyHostToDevice, m_state.stream));
 
     m_accel_build_options.operation = OPTIX_BUILD_OPERATION_UPDATE; // set to update 
 
-    //// GAS build
-    //OPTIX_CHECK(optixAccelBuild(
-    //    m_state.context,
-    //    m_state.stream,
-    //    &m_cached_build_options,
-    //    &m_aabb_input, 
-    //    1,
-    //    m_d_scratch_refit, 
-    //    m_scratch_bytes,
-    //    m_state.d_gas_output_buffer,     // same output buffer
-    //    nullptr, 
-    //    0));
+    OPTIX_CHECK(optixAccelBuild(m_state.context,								  // OptiX context
+        m_state.stream,                                  // CUDA stream (default is 0)
+        &m_accel_build_options,
+        &m_aabb_input,
+        1,
+        m_temp_buffer,
+        m_temp_buffer_size,
+        m_output_buffer,
+        m_output_buffer_size,
+        &m_state.gas_handle,                             // Output handle for the GAS
+        nullptr,                                        // Emitted properties (not used here)
+        0));                                           // Number of emitted properties
 
-    // update sun plane as well.
+
+	compute_sun_plane_H(params);
 }

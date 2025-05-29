@@ -74,9 +74,10 @@ private:
 	CUdeviceptr            m_aabb_list_D{};          // device pointer to the aabb list
     
     
-    CUdeviceptr m_d_scratch_refit{};   // persistent scratch
-    size_t m_scratch_bytes = 0;   // size of that scratch
-
+    CUdeviceptr m_output_buffer{};   // output buffer
+	CUdeviceptr m_temp_buffer{};     // temporary buffer for building GAS
+    size_t m_output_buffer_size = 0;   // size of that scratch
+	size_t m_temp_buffer_size = 0;     // size of the output buffer
 };
 
 /**

@@ -29,7 +29,7 @@ SolTraceSystem::SolTraceSystem(int numSunPoints)
     options.logCallbackFunction = [](unsigned int level, const char* tag, const char* message, void*) {
         std::cerr << "[" << std::setw(2) << level << "][" << std::setw(12) << tag << "]: " << message << "\n";
         };
-    options.logCallbackLevel = 1;
+    options.logCallbackLevel = 4;
     OPTIX_CHECK(optixDeviceContextCreate(cuCtx, &options, &m_state.context));
 
     pipeline_manager = std::make_shared<pipelineManager>(m_state);
