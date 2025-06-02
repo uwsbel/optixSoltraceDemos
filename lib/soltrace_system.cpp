@@ -13,10 +13,12 @@
 // TODO: optix related type should go into one header file
 typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
 
-void SolTraceSystem::print_launch_params(const LaunchParams& params) {
+void SolTraceSystem::print_launch_params() {
 
-    float3 sun_box_a = data_manager->launch_params_H.sun_v0 - data_manager->launch_params_H.sun_v1;
-    float3 sun_box_b = data_manager->launch_params_H.sun_v1 - data_manager->launch_params_H.sun_v2;
+	LaunchParams params = data_manager->launch_params_H;
+
+    float3 sun_box_a = params.sun_v0 - params.sun_v1;
+    float3 sun_box_b = params.sun_v1 - params.sun_v2;
 
     float sun_box_edge_a = sqrtf(sun_box_a.x * sun_box_a.x + sun_box_a.y * sun_box_a.y + sun_box_a.z * sun_box_a.z);
     float sun_box_edge_b = sqrtf(sun_box_b.x * sun_box_b.x + sun_box_b.y * sun_box_b.y + sun_box_b.z * sun_box_b.z);
@@ -24,8 +26,8 @@ void SolTraceSystem::print_launch_params(const LaunchParams& params) {
     std::cout << "print launch params: " << std::endl;
     std::cout << "width: " << params.width << std::endl;
     std::cout << "height: " << params.height << std::endl;
-    std::cout << "max_depth: " << data_manager->launch_params_H.max_depth << std::endl;
-    std::cout << "hit_point_buffer: " << data_manager->launch_params_H.hit_point_buffer << std::endl;
+    std::cout << "max_depth: " << params.max_depth << std::endl;
+    std::cout << "hit_point_buffer: " << params.hit_point_buffer << std::endl;
     std::cout << "sun_vector: " <<params.sun_vector.x << " " <<params.sun_vector.y << " " <<params.sun_vector.z << std::endl;
     std::cout << "max_sun_angle: " <<params.max_sun_angle << std::endl;
     std::cout << "sun_v0: " <<params.sun_v0.x << " " <<params.sun_v0.y << " " <<params.sun_v0.z << std::endl;
@@ -120,7 +122,7 @@ void SolTraceSystem::initialize() {
     data_manager->launch_params_H.handle = m_state.gas_handle;
     data_manager->allocateGeometryDataArray(geometry_manager->get_geometry_data_array());
 
-	print_launch_params(data_manager->launch_params_H);
+    print_launch_params();
 
 
     // copy launch params to device
@@ -162,11 +164,15 @@ void SolTraceSystem::run() {
 
 void SolTraceSystem::update() {
 
+
+    const size_t hit_point_buffer_size = data_manager->launch_params_H.width * data_manager->launch_params_H.height * sizeof(float4) * data_manager->launch_params_H.max_depth;
+
     // update aabb and sun plane accordingly
 	geometry_manager->update_geometry_info(m_element_list, data_manager->launch_params_H);
 
     // update data on the device    
 	data_manager->updateGeometryDataArray(geometry_manager->get_geometry_data_array());
+    CUDA_CHECK(cudaMemset(data_manager->launch_params_H.hit_point_buffer, 0, hit_point_buffer_size));
 	data_manager->updateLaunchParams();
 }
 

@@ -123,7 +123,11 @@ public:
 	/// set normalized sun vector
 	/// </summary>
 	/// <param name="sunVector"></param>
-	void set_sun_vector(Vector3d vect) { m_sun_vector = vect; } // Set the sun vector
+    void set_sun_vector(Vector3d vect) {
+        m_sun_vector = vect;
+        Vector3d sun_v = m_sun_vector.normalized(); // Normalize the sun vector
+        data_manager->launch_params_H.sun_vector = make_float3(sun_v[0], sun_v[1], sun_v[2]);
+    } // Set the sun vector
 
 	void set_sun_angle(double angle) { m_sun_angle = angle; } // Set the sun angle
 
@@ -153,7 +157,7 @@ public:
     double get_time_trace();
 	double get_time_setup();
 
-    void print_launch_params(const LaunchParams& params);
+    void print_launch_params();
 
 
 private:
