@@ -76,7 +76,13 @@ __global__ void calculateMaxD_Kernel(
 		max_d = fmaxf(max_d, abs(dot(corners[i], sun_dir_normalized)));
 	}
 
-    sdata[threadIdx.x] = max_d;
+	if (thread_id >= num_aabbs) {
+        sdata[threadIdx.x] = 0;
+    }
+    else {
+		sdata[threadIdx.x] = max_d;
+
+    }
 
 
     __syncthreads();

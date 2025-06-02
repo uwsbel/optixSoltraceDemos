@@ -54,6 +54,19 @@ void dataManager::allocateGeometryDataArray(std::vector<GeometryDataST> geometry
 
 }
 
+void dataManager::updateGeometryDataArray(std::vector<GeometryDataST> geometry_data_array_H) {
+
+	if (geometry_data_array_D == nullptr) {
+		throw std::runtime_error("Geometry data array is not allocated.");
+	}
+
+	CUDA_CHECK(cudaMemcpy(geometry_data_array_D, geometry_data_array_H.data(),
+		geometry_data_array_H.size() * sizeof(GeometryDataST), cudaMemcpyHostToDevice));
+
+	//launch_params_H.geometry_data_array = geometry_data_array_D;
+
+}
+
 void dataManager::cleanup() {
 	CUDA_CHECK(cudaFree(launch_params_D));
 	launch_params_D = nullptr;

@@ -10,7 +10,7 @@ int main(int argc, char* argv[]) {
 
 	// parabolic mirror, cylindrical receiver
 	// number of rays launched for the simulation
-	int num_rays = 10000;
+	int num_rays = 1000;
 	// Create the simulation system.
 	SolTraceSystem system(num_rays);
 
@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
 		e3->update_element(aim_point_e3, zrot_e3);
 
 		system.update();
-		if (frame < 5) {
+		if (frame > 5) {
 			break; // stop when the aim point is too high
 		}
 		frame++;

@@ -106,10 +106,12 @@ void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<El
 
 void GeometryManager::compute_sun_plane_H(LaunchParams& params) {
 
+    m_sun_plane_distance = -1;
     float3 sun_vector = params.sun_vector;
 
     float* sun_plane_dist_D;
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&sun_plane_dist_D), sizeof(float)));
+    CUDA_CHECK(cudaMemset(sun_plane_dist_D, 0, sizeof(float)));
 
     compute_d_on_gpu(reinterpret_cast<const OptixAabb*>(m_aabb_list_D), m_obj_counts, sun_vector, sun_plane_dist_D);
 
@@ -239,6 +241,14 @@ void GeometryManager::update_geometry_info(const std::vector<std::shared_ptr<Ele
 		m_aabb_list_H.data(),
 		m_aabb_list_H.size() * sizeof(OptixAabb),
 		cudaMemcpyHostToDevice, m_state.stream));
+
+    std::vector<uint32_t> aabb_input_flags(NUM_OPTICAL_ENTITY_TYPES);
+    for (int i = 0; i < NUM_OPTICAL_ENTITY_TYPES; i++) {
+        aabb_input_flags[i] = OPTIX_GEOMETRY_FLAG_DISABLE_ANYHIT;
+    }
+
+	m_aabb_input.customPrimitiveArray.flags = aabb_input_flags.data();
+
 
     CUDA_CHECK(cudaMemcpyAsync(
         reinterpret_cast<void*>(m_aabb_input.customPrimitiveArray.aabbBuffers[0]),

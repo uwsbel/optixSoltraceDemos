@@ -34,8 +34,12 @@ public:
     void updateLaunchParams();
 
 	// create geometry_data_array_D on the device
-	// then launch_params_D.geometry_data_array = geometry_data_array_D gets a copy!
+	// then launch_params_D.geometry_data_array = geometry_data_array_D gets a copy.
 	void allocateGeometryDataArray(std::vector<GeometryDataST> geometry_data_array);
+
+	// update geometry_data_array_D on the device
+	// then launch_params_D.geometry_data_array = geometry_data_array_D gets a copy.
+	void updateGeometryDataArray(std::vector<GeometryDataST> geometry_data_array_H);
 };
 
 #endif  // DATAMANAGER_H

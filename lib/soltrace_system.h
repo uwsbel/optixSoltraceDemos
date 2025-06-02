@@ -153,6 +153,8 @@ public:
     double get_time_trace();
 	double get_time_setup();
 
+    void print_launch_params(const LaunchParams& params);
+
 
 private:
 

@@ -9,9 +9,9 @@
 int main(int argc, char* argv[]) {
     bool stinput = false; // Set to true if using stinput file, false otherwise
     bool parabolic = true; // Set to true for parabolic mirrors, false for flat mirrors
-    bool use_cylindical = true;
+    bool use_cylindical = false;
     // number of rays launched for the simulation
-    int num_rays = 2181883;
+    int num_rays = 10000;
     // Create the simulation system.
     SolTraceSystem system(num_rays);
 
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
         ////////////////////////////////////////////
         // STEP 1.4 Add the element to the system //
         ///////////////////////////////////////////
-        system.add_element(e1);
+        //system.add_element(e1);
 
         // Element 2
         Vector3d origin_e2(0, 5, 0); // origin of the element
