@@ -21,33 +21,32 @@ int main(int argc, char* argv[]) {
 
 
 	// Element 3
-	Vector3d origin_e3(5, 0, 0); // origin of the element
-	Vector3d aim_point_e3(-17.360680, 0, 94.721360); // aim point of the element
+	Vector3d origin_e2(0, 5, 0); // origin of the element
+	Vector3d aim_point_e2(0, -17.360680, 94.721360); // aim point of the element
 	// z of aimpoint can go all the way to 100 
 	//Vector3d aim_point_e3(0, 0, 9.5);
 
-	double zrot_e3 = -90.0; // 
-	auto e3 = std::make_shared<Element>();
-	e3->set_origin(origin_e3);
-	e3->set_aim_point(aim_point_e3); // Aim direction
-	e3->set_zrot(zrot_e3);
+	auto e2 = std::make_shared<Element>();
+	e2->set_origin(origin_e2);
+	e2->set_aim_point(aim_point_e2); // Aim direction
+	e2->set_zrot(0.0);
 
-	auto surface_e3 = std::make_shared<SurfaceParabolic>();
+	auto surface_e2 = std::make_shared<SurfaceParabolic>();
 	//auto surface_e3 = std::make_shared<SurfaceFlat>();
 
-	surface_e3->set_curvature(curv_x, curv_y);
-	e3->set_surface(surface_e3);
+	surface_e2->set_curvature(curv_x, curv_y);
+	e2->set_surface(surface_e2);
 
 	auto aperture_e3 = std::make_shared<ApertureRectangle>(dim_x, dim_y);
-	e3->set_aperture(aperture_e3);
+	e2->set_aperture(aperture_e3);
 
-	system.add_element(e3);
+	system.add_element(e2);
 
 	//////////////////////////////////////////////
 	// STEP 2.1 Create receiver, flat rectangle //
 	//////////////////////////////////////////////
 	Vector3d receiver_origin(0, 0, 10.0); // origin of the receiver
-	Vector3d receiver_aim_point(0, 5, 10.0); // aim point of the receiver
+	Vector3d receiver_aim_point(0, 5, 0.0); // aim point of the receiver
 
 	auto e4 = std::make_shared<Element>();
 	e4->set_origin(receiver_origin);
@@ -58,20 +57,21 @@ int main(int argc, char* argv[]) {
 	///////////////////////////////////////////
 	// STEP 2.2 create rectangle aperture    //
 	///////////////////////////////////////////
-	double receiver_dim_x = 0.5;  // diameter of the receiver
-	double receiver_dim_y = 2.0;  // full height of the cylindrical receiver
+	double receiver_dim_x = 2.0;  // diameter of the receiver
+	double receiver_dim_y = 4.0;  // full height of the cylindrical receiver
 
 	auto receiver_aperture = std::make_shared<ApertureRectangle>(receiver_dim_x, receiver_dim_y);
 	e4->set_aperture(receiver_aperture);
 
 	// Create a cylindrical surface if use_cylindical is true
-	auto receiver_surface = std::make_shared<SurfaceCylinder>();
+	auto receiver_surface = std::make_shared<SurfaceFlat>();
 	e4->set_surface(receiver_surface);
 	system.add_element(e4); // Add the receiver to the system
 
 	// set up sun vector and angle 
-	Vector3d sun_vector(0.0, 0.0, 100.0); // sun vector
-	double sun_angle = 0.00465; // 0.00465; // sun angle
+	Vector3d sun_vector(0.0, -20.0, 100.0); // sun vector
+	//double sun_angle = 0.00465; // 0.00465; // sun angle
+	double sun_angle = 0.0; // 0.00465; // sun angle, set to 0 for this example	
 
 	system.set_sun_vector(sun_vector);
 	system.set_sun_angle(sun_angle);
@@ -86,11 +86,16 @@ int main(int argc, char* argv[]) {
 		std::string filename = "output_dynamic_" + std::to_string(frame) + ".csv";
 		system.write_output(filename);
 
-		aim_point_e3[2] += 1;
-		e3->update_element(aim_point_e3, zrot_e3);
+		system.print_launch_params();
+		//aim_point_e3[2] += 1;
+		//e3->update_element(aim_point_e3, zrot_e3);
+
+		 //update sun position instead 
+		sun_vector[1] += 1; // move the sun vector up
+		system.set_sun_vector(sun_vector);
 
 		system.update();
-		if (frame > 5) {
+		if (frame > 40) {
 			break; // stop when the aim point is too high
 		}
 		frame++;
