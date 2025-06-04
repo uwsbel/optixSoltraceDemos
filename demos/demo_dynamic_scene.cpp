@@ -78,27 +78,21 @@ int main(int argc, char* argv[]) {
 
 	system.initialize();
 
-	int frame = 0;
-
-	while (true) {
-
+	int end_frames = 40;
+	for (int frame = 0; frame < end_frames; frame++) {
 		system.run();
 		std::string filename = "output_dynamic_" + std::to_string(frame) + ".csv";
 		system.write_output(filename);
 
-		system.print_launch_params();
+		// update strategy, can either be sun vector or pose/position of the heliostats
 		//aim_point_e3[2] += 1;
 		//e3->update_element(aim_point_e3, zrot_e3);
 
-		 //update sun position instead 
-		sun_vector[1] += 1; // move the sun vector up
+		 //update sun position
+		sun_vector[1] += 1; // sun goes around
 		system.set_sun_vector(sun_vector);
 
 		system.update();
-		if (frame > 40) {
-			break; // stop when the aim point is too high
-		}
-		frame++;
 	}
 
 	system.clean_up();

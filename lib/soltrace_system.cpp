@@ -1,4 +1,5 @@
 #include "soltrace_system.h"
+#include "geometry_manager.h"
 #include "data_manager.h"
 #include <fstream>
 #include <sstream>

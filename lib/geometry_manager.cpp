@@ -1,4 +1,5 @@
 #include "soltrace_system.h"
+#include "geometry_manager.h"
 #include <cfloat> 
 #include <cuda/GeometryDataST.h>
 #include <cuda/Soltrace.h>
