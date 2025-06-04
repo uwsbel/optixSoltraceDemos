@@ -575,7 +575,7 @@ endif()
 # and the CMakeLists.txt file.
 add_subdirectory(lib)
 add_subdirectory(demos)
-
+add_subdirectory(interface)
 #################################################################
 
 # Now that everything is done, indicate that we have finished configuring at least once.
