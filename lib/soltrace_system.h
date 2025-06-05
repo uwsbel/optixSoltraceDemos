@@ -4,17 +4,7 @@
 #include <string>
 #include <vector>
 
-#include <cuda_runtime.h>
-
-#include <optix.h>
-#include <optix_types.h>
-#include <sampleConfig.h>
-#include <optix_stack_size.h>
-#include <optix_stubs.h>
-
-#include <soltrace_state.h>
 #include <geometry_manager.h>
-#include <cuda/Soltrace.h>
 
 using namespace soltrace;
 

@@ -10,7 +10,5 @@ target_include_directories(optix_soltrace
             ${CMAKE_SOURCE_DIR}/lib        
 )
 
-# Add the implementation file to the sources
-target_sources(optix_soltrace PRIVATE
-    soltrace_optix_interface.cpp
-)
+target_link_libraries(optix_soltrace
+    PRIVATE geometry)   

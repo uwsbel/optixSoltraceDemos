@@ -1,5 +1,5 @@
 #pragma once
-#include <soltrace_system.h>
+//#include <soltrace_system.h>
 class soltrace_optix_interface {
 public:
     explicit soltrace_optix_interface(int num_rays = 10000);
@@ -18,5 +18,7 @@ public:
     void write_output(const char* outPath);
 
 private:
-    SolTraceSystem sys;
+    //SolTraceSystem sys;
+    struct Impl;
+	std::unique_ptr<Impl> impl; // Pimpl idiom to hide implementation details
 };

@@ -2,8 +2,8 @@
 #include <optix.h>
 #include <sutil/vec_math.h>
 #include <vector>
-#include <cuda/GeometryDataST.h>
-#include <cuda/Soltrace.h>
+//#include <cuda/GeometryDataST.h>
+//#include <cuda/Soltrace.h>
 #include <string>
 
 // TODO

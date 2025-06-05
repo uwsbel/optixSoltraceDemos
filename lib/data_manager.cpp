@@ -7,6 +7,8 @@
 #include <iostream>
 #include <iomanip>
 #include "data_manager.h"
+#include <sutil/Exception.h>
+
 
 dataManager::dataManager() : launch_params_D(nullptr) {
 	

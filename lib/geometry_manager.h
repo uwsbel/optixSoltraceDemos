@@ -6,23 +6,18 @@
 #include <vector>
 #include <cuda_runtime.h>
 #include <optix.h>
-#include <sutil/vec_math.h>
-#include <soltrace_state.h>
-#include <sampleConfig.h>
-#include <optix.h>
 #include <optix_stack_size.h>
 #include <optix_stubs.h>
-// Sutil headers.
-#include <sutil/Exception.h>
-#include <sutil/Record.h>
-#include <sutil/sutil.h>
-#include <sutil/vec_math.h>
+#include <optix_types.h>
+
+
+
 #include <cuda/Soltrace.h>
 #include <data_manager.h>
 #include <lib/pipeline_manager.h>
 #include <lib/element.h>
 #include <lib/timer.h>
-#include <optix_types.h>
+#include <soltrace_state.h>
 
 /**
  * @class geometryManager

@@ -7,6 +7,7 @@
 #include <soltrace_state.h>
 #include <optix.h>
 #include <vector>
+#include <sutil/Exception.h>
 
 // TODO 
 // need to extractr sun plane 

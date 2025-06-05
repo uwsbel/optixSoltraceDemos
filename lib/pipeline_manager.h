@@ -7,6 +7,7 @@
 #include "optix.h"
 #include <cuda/Soltrace.h>
 #include <soltrace_type.h>
+#include "soltrace_state.h"
 
 /**
  * @class pipelineManager

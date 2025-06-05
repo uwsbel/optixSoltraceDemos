@@ -9,6 +9,9 @@
 #include <iomanip>
 #include <soltrace_type.h>
 #include <element.h>
+#include <sutil/Exception.h>
+#include <sampleConfig.h>
+#include <sutil/Record.h>
 
 
 // TODO: optix related type should go into one header file
