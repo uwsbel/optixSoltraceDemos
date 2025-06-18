@@ -14,7 +14,6 @@
 
 #include <cuda/Soltrace.h>
 #include <data_manager.h>
-#include <lib/pipeline_manager.h>
 #include <lib/element.h>
 #include <lib/timer.h>
 #include <soltrace_state.h>

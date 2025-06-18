@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <geometry_manager.h>
+class pipelineManager;
 
 using namespace soltrace;
 

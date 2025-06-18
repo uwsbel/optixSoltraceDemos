@@ -1,13 +1,14 @@
 #include "soltrace_system.h"
 #include "geometry_manager.h"
 #include "data_manager.h"
+#include "pipeline_manager.h"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <chrono>
 #include <iostream>
 #include <iomanip>
-#include <soltrace_type.h>
+#include "soltrace_type.h"
 #include <element.h>
 #include "util_record.hpp"
 #include "util_check.hpp"

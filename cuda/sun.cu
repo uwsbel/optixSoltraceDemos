@@ -2,8 +2,8 @@
 #include <curand_kernel.h>
 #include <vector_types.h>
 
-#include <cuda/helpers.h>
-#include <cuda/random.h>
+//#include <cuda/helpers.h>
+//#include <cuda/random.h>
 #include "Soltrace.h"
 
 // Launch parameters for soltrace
