@@ -1,7 +1,6 @@
 
-# optixSoltraceDemos
-
-**optixSoltraceDemos** is a demo project that utilizes NVIDIA OptiX for ray tracing encountered in Concentrated Solar Power applications.
+# OptixCSP
+**OptixCSP** is a library that utilizes NVIDIA OptiX for ray tracing encountered in Concentrated Solar Power applications.
 
 ---
 
