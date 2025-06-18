@@ -6,8 +6,8 @@
 #include <chrono>
 #include <iostream>
 #include <iomanip>
+#include "util_check.hpp"
 #include "data_manager.h"
-#include <sutil/Exception.h>
 
 
 dataManager::dataManager() : launch_params_D(nullptr) {

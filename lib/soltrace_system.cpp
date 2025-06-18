@@ -9,13 +9,13 @@
 #include <iomanip>
 #include <soltrace_type.h>
 #include <element.h>
-#include <sutil/Exception.h>
+#include "util_record.hpp"
+#include "util_check.hpp"
 #include <sampleConfig.h>
-#include <sutil/Record.h>
 
 
 // TODO: optix related type should go into one header file
-typedef sutil::Record<soltrace::HitGroupData> HitGroupRecord;
+typedef Record<soltrace::HitGroupData> HitGroupRecord;
 
 void SolTraceSystem::print_launch_params() {
 
@@ -301,13 +301,13 @@ void SolTraceSystem::create_shader_binding_table(){
     // Ray generation program record
     {
         CUdeviceptr d_raygen_record;                   // Device pointer to hold the raygen SBT record.
-        size_t      sizeof_raygen_record = sizeof(sutil::EmptyRecord);
+        size_t      sizeof_raygen_record = sizeof(EmptyRecord);
 
         CUDA_CHECK(cudaMalloc(
             reinterpret_cast<void**>(&d_raygen_record),
             sizeof_raygen_record));
 
-        sutil::EmptyRecord rg_sbt;  // host
+        EmptyRecord rg_sbt;  // host
 
         optixSbtRecordPackHeader(m_state.raygen_prog_group, &rg_sbt);
 
@@ -326,13 +326,13 @@ void SolTraceSystem::create_shader_binding_table(){
     // Miss program record
     {
         CUdeviceptr d_miss_record;
-        size_t sizeof_miss_record = sizeof(sutil::EmptyRecord);
+        size_t sizeof_miss_record = sizeof(EmptyRecord);
 
         CUDA_CHECK(cudaMalloc(
             reinterpret_cast<void**>(&d_miss_record),
             sizeof_miss_record * soltrace::RAY_TYPE_COUNT));
 
-        sutil::EmptyRecord ms_sbt[soltrace::RAY_TYPE_COUNT];
+        EmptyRecord ms_sbt[soltrace::RAY_TYPE_COUNT];
         // Pack the program header into the first miss SBT record.
         optixSbtRecordPackHeader(m_state.radiance_miss_prog_group, &ms_sbt[0]);
 

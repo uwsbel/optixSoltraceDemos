@@ -2,8 +2,8 @@
 #include <curand_kernel.h>
 #include <vector_types.h>
 
-#include <cuda/helpers.h>
-#include <cuda/random.h>
+//#include <cuda/helpers.h>
+//#include <cuda/random.h>
 #include <cuda/Soltrace.h>
 #include <cuda_runtime.h>
 #include <iostream>

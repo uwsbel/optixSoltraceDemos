@@ -3,7 +3,6 @@
 #include "Soltrace.h"
 #include <stdio.h>
 #include <optix_device.h>
-#include <sutil/vec_math.h>
 #include "GeometryDataST.h"
 
 extern "C" {

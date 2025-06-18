@@ -1,85 +1,3 @@
-# TODO
-# auto copy sutil, glfw, glad dll libraries to the bin folder
-# linux 
-
-# SPDX-FileCopyrightText: Copyright (c) 2019 - 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: BSD-3-Clause
-# 
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# Welcome to the OptiX SDK build.  We have chosen CMake, because it can generate multiple
-# build systems for multiple architectures from a single script.  There are many resources
-# for CMake on-line at http://www.cmake.org and their wiki page,
-# http://www.cmake.org/Wiki/CMake, in addition to the documentation that comes with the
-# distribution.  There is also a book available if you wish to delve more deeply into
-# various topics.
-
-# If you wish to create your own project and use the SDK as a template there are a number
-# of things you should do.
-#
-# 1. You should copy the contents of the SDK to a place of your choice.
-#
-# 2. You can remove any sample's directory you don't wish to build.  Be careful about
-#    the following directories.
-#
-#    a. CMake - contains helper scripts that make this all work.  You should keep this.
-#
-#    b. sutil and putil
-#              - Almost all of the samples make use of this shared code one way or another, so
-#               you should probably keep them until you have your own frameowrk for your
-#               code.
-#
-#    d. data  - This directory contains the cow.obj file used as an example for
-#               many of the samples.  You can move cow.obj anywhere as long as
-#               you fix all the file paths in the samples you wish to use it in.
-#
-# 3. You should update the list of sub directories that CMake needs to process below (look
-#    for the comment "List of samples found in subdirectories.")
-#
-
-# The basic flow of execution of this file is to do the following.
-#
-# 1. Setup the project and other global settings.  This involves processing some helper
-#    scripts.
-#
-# 2. Look for external dependencies, CUDA, and OptiX.
-#
-# 3. Process all the subdirectories' CMakeLists.txt files.  These files create all the
-#    executable and library targets that are used to build the SDK.
-#
-# 4. As a convenience on Windows, copy the OptiX dlls into the build directories, so OptiX
-#    doesn't have to be in the path to run the samples.
-#
-# 5. Set a CMake variable that indicates we have configured for the first time.  This
-#    allows us to override and set varibles' defaults while allowing them to be modified
-#    later.
-
-# If you have any questions, don't feel shy about posting to the OptiX forums:
-# https://devtalk.nvidia.com/default/board/90/
-
 cmake_minimum_required(VERSION 3.18)
 
 # This sets up the name of our project.  For our purposes the main thing this controls is
@@ -344,7 +262,6 @@ link_directories("$<IF:$<CONFIG:Debug>,${OptiX_INSTALL_DIR}/build/lib/Debug,${Op
 include_directories(
   "${OptiX_INCLUDE}"
   "${OptiX_INSTALL_DIR}/SDK"
-  "${OptiX_INSTALL_DIR}/SDK/support"
 )
 
 # Select whether to use NVRTC or NVCC to generate PTX
@@ -373,7 +290,6 @@ set(SAMPLES_CUDA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cuda")
 # NVRTC include paths relative to the sample path
 set(SAMPLES_RELATIVE_INCLUDE_DIRS "\\
   \"cuda\", \\
-  \"sutil\", \\
   \".\", ")
 
 # NVRTC absolute include paths to the headers used to build the samples
@@ -397,7 +313,6 @@ endforeach()
 
 configure_file(sampleConfig.h.in sampleConfig.h @ONLY)
 
-# Path to sutil.h that all the samples need
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}
                      "${CMAKE_BINARY_DIR}/include"
                      ${CMAKE_CURRENT_BINARY_DIR}
@@ -406,22 +321,6 @@ include_directories( ${CMAKE_CURRENT_SOURCE_DIR}
 
 set(SAMPLES_CUDA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cuda)
 
-# Helper macro to generate PTX from the CUDA files in sutil.
-macro(OPTIX_sutil_compile_to_optix_input generated_files)
-  if( NOT CUDA_NVRTC_ENABLED )
-    if( SAMPLES_INPUT_GENERATE_OPTIXIR )
-      message("sutil OPTIXIR")
-      CUDA_WRAP_SRCS( sutil OPTIXIR generated_files2 ${ARGN} )
-      list(APPEND ${generated_files} ${generated_files2})
-    endif()
-    if( SAMPLES_INPUT_GENERATE_PTX )
-      message("sutil PTX")
-      CUDA_WRAP_SRCS( sutil PTX generated_files3 ${ARGN} )
-      list(APPEND ${generated_files} ${generated_files3})
-    endif()
-  endif()
-  message("${generated_files} = ${${generated_files}}")
-endmacro()
 
 # These calls will group PTX and CUDA files into their own directories in the Visual
 # Studio projects.
@@ -494,22 +393,9 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
     ${cmake_options}
     )
   message(STATUS "Target ${target_name} source files: ${source_files}")
-
     
-    # find_package( OpenGL REQUIRED )
-
-    if( UNIX )
-      # On Unix-like systems, shared libraries can use the soname system.
-      set(GLFW_LIB_NAME glfw)
-    else()
-      set(GLFW_LIB_NAME glfw3dll)
-    endif()
-    
-  # Most of the samples link against the sutil library and the optix library.  Here is the
-  # rule that specifies this linkage.
   target_link_libraries( ${target_name}
     ${CUDA_LIBRARIES}
-    sutil_7_sdk
     geometry
     )
 
@@ -526,13 +412,6 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
     target_link_libraries( ${target_name} m ) # Explicitly link against math library (C samples don't do that by default)
   endif()
 endfunction()
-
-# COPY DLL FILES
-set(DLLS_TO_COPY
-    "${OptiX_INSTALL_DIR}/build/bin/$<CONFIG>/glad.dll"
-    "${OptiX_INSTALL_DIR}/build/bin/$<CONFIG>/glfw3.dll"
-    "${OptiX_INSTALL_DIR}/build/bin/$<CONFIG>/sutil_7_sdk.dll"
-)
 
 # Function to copy DLLs to the appropriate directory
 function(copy_dll_to_bin target_name)

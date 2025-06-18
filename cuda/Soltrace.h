@@ -1,9 +1,5 @@
 #pragma once
-
 #include <vector_types.h>
-
-#include <cuda/BufferView.h>
-
 #include <cuda/GeometryDataST.h>
 #include <cuda/MaterialDataST.h>
 

@@ -5,14 +5,9 @@
 #include <sampleConfig.h>
 #include <optix_stack_size.h>
 #include <optix_stubs.h>
-// Sutil headers.
-#include <sutil/Exception.h>
-#include <sutil/Record.h>
-#include <sutil/sutil.h>
-
+#include "util_check.hpp"
 #include <cuda/Soltrace.h>
 #include <lib/data_manager.h>
-
 #include <soltrace_state.h>
 #include <lib/pipeline_manager.h>
 #include <fstream>
@@ -133,7 +128,7 @@ void pipelineManager::createPipeline()
     pipeline_link_options.maxTraceDepth = MAX_TRACE_DEPTH; // Maximum recursion depth for ray tracing.
 
     // Create the OptiX pipeline by linking the program groups.
-    OPTIX_CHECK_LOG(optixPipelineCreate(
+    OPTIX_CHECK(optixPipelineCreate(
         m_state.context,                        // OptiX context.
         &m_state.pipeline_compile_options,      // Compile options for the pipeline.
         &pipeline_link_options,               // Link options for the pipeline.
@@ -191,7 +186,7 @@ void pipelineManager::createHitGroupProgram(OptixProgramGroup& group,
     desc.hitgroup.moduleAH = nullptr;
     desc.hitgroup.entryFunctionNameAH = nullptr;
 
-    OPTIX_CHECK_LOG(optixProgramGroupCreate(
+    OPTIX_CHECK(optixProgramGroupCreate(
         m_state.context,
         &desc,
         1,
@@ -286,7 +281,7 @@ void pipelineManager::createMissProgram()
     desc.miss.entryFunctionName = "__miss__ms";
 
     // Create the program grou
-    OPTIX_CHECK_LOG(optixProgramGroupCreate(
+    OPTIX_CHECK(optixProgramGroupCreate(
         m_state.context,
         &desc,
         1,

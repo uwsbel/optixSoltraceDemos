@@ -3,9 +3,6 @@
 #define SOLTRACE_APERTURE_H
 
 #include "soltrace_type.h"  // For ApertureType enum
-#include <optix.h>
-#include <vector_types.h>
-
 // Forward declarations
 class Element;
 class Vector3d;
