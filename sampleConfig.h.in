@@ -35,20 +35,5 @@
 #define SAMPLES_PTX_DIR "@SAMPLES_PTX_DIR@"
 #define SAMPLES_CUDA_DIR "@SAMPLES_CUDA_DIR@"
 
-// Include directories
-#define SAMPLES_RELATIVE_INCLUDE_DIRS @SAMPLES_RELATIVE_INCLUDE_DIRS@
-#define SAMPLES_ABSOLUTE_INCLUDE_DIRS @SAMPLES_ABSOLUTE_INCLUDE_DIRS@
-
-// Signal whether to use NVRTC or not
-#cmakedefine01 CUDA_NVRTC_ENABLED
-
-// NVRTC compiler options
-#if defined( NDEBUG )
-#define CUDA_NVRTC_OPTIONS @CUDA_NVRTC_OPTIONS@
-#else
-#define CUDA_NVRTC_OPTIONS @CUDA_NVRTC_OPTIONS_DEBUG@
-#endif
-
 // Indicate what input we are generating
-#cmakedefine01 SAMPLES_INPUT_GENERATE_OPTIXIR
 #cmakedefine01 SAMPLES_INPUT_GENERATE_PTX

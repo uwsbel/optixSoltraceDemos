@@ -28,6 +28,4 @@ foreach(PROGRAM ${DEMOS})
     # Add compile definitions (specific to OptiX)
     target_compile_definitions(${PROGRAM} PRIVATE CUDA_NVRTC_ENABLED)
 
-    # Copy DLLs to the bin folder
-    copy_dll_to_bin(${PROGRAM})
 endforeach()

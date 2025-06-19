@@ -13,11 +13,6 @@ set(CMAKE_CUDA_ARCHITECTURES 75;86;89)
 
 cmake_policy(VERSION 3.5)
 
-if( POLICY CMP0072 )
-  # FindOpenGL prefers GLVND by default when available
-  cmake_policy(SET CMP0072 NEW)
-endif()
-
 if( POLICY CMP0074 )
   # find_package uses <PackageName>_ROOT variables.
   cmake_policy(SET CMP0074 NEW)
@@ -64,7 +59,6 @@ if(USING_CLANG_C)
   set(CUDA_HOST_COMPILER "clang" CACHE FILEPATH "Host side compiler used by NVCC")
 endif()
 
-# CUDA 8 is broken for generating dependencies during configure
 option(CUDA_GENERATE_DEPENDENCIES_DURING_CONFIGURE "Generate dependencies during configure time instead of only during build time." OFF)
 
 # Passing the --use-local-env option to NVCC can dramatically speed up CUDA compilation
@@ -73,37 +67,8 @@ if(WIN32)
 endif()
 
 find_package(CUDA 12.0 REQUIRED)
-# If NVRTC was enabled/disabled, reset OPTIXIR/PTX to default
-set( CUDA_NVRTC_ENABLED OFF CACHE BOOL "Use NVRTC to compile OPTIXIR/PTX at run-time instead of NVCC at build-time" )
-if( NOT ( NOT ( NOT CUDA_NVRTC_ENABLED ) ) EQUAL ( NOT ( NOT CUDA_NVRTC_ENABLED_INTERNAL ) ) )
-  message( STATUS "Resetting OPTIXIR/PTX support" )
-  unset( SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT CACHE )
-endif()
-set( CUDA_NVRTC_ENABLED_INTERNAL ${CUDA_NVRTC_ENABLED} CACHE INTERNAL "Previous configured value (NVRTC)" FORCE )
 
-# Disable OptiXIR support
-set(SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT OFF CACHE BOOL "Enable support for generating OptiX-IR targetted input files" FORCE)
-
-
-# This code looks funny, but CMake doesn't have an equality operator for boolean types
-# (only integer and string). By doing NOT NOT VAL, you can force the original value into 0
-# or 1 and allow the EQUAL operator to function correctly.
-if( NOT ( NOT ( NOT SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT ) ) EQUAL ( NOT ( NOT SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT_INTERNAL ) ) )
-  message( STATUS "Unsetting values associated with OptiX code generation" )
-  # This allows us to reset dependent options if you change it.
-  unset( SAMPLES_INPUT_GENERATE_OPTIXIR CACHE )
-  unset( SAMPLES_INPUT_GENERATE_PTX CACHE )
-  unset( GENERATE_DEBUG_DEVICE_CODE CACHE )
-endif()
-set(SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT_INTERNAL ${SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT} CACHE INTERNAL "Previous configured value (OPTIXIR)" FORCE)
-
-if( SAMPLES_INPUT_ENABLE_OPTIXIR_SUPPORT )
-  option( SAMPLES_INPUT_GENERATE_OPTIXIR "Generate Optix-IR OptiX shaders" ON )
-  option( SAMPLES_INPUT_GENERATE_PTX "Generate PTX OptiX shaders" OFF )
-else()
-  option( SAMPLES_INPUT_GENERATE_OPTIXIR "Generate Optix-IR OptiX shaders" OFF )
-  option( SAMPLES_INPUT_GENERATE_PTX "Generate PTX OptiX shaders" ON )
-endif()
+option( SAMPLES_INPUT_GENERATE_PTX "Generate PTX OptiX shaders" ON )
 
 # Determine if we are going to use the static CRT on windows.
 if(WIN32)
@@ -181,24 +146,10 @@ if( NOT PASSED_FIRST_CONFIGURE )
       optix_add_cuda_flag_config( _${config} "-O0" )
     endif()
   endforeach()
-
-  if( CUDA_VERSION VERSION_LESS "3.0" )
-    optix_add_cuda_flag("--keep")
-  endif()
-
-  # Some CUDA 11.x toolkits erroneously complain about sm_50 being deprecated
-  if(CUDA_VERSION VERSION_GREATER "11.0")
-    optix_add_cuda_flag("-Wno-deprecated-gpu-targets")
-  endif()
+  optix_add_cuda_flag("-Wno-deprecated-gpu-targets")
 
   if(CUDA_USE_LOCAL_ENV)
     optix_add_cuda_flag("--use-local-env")
-  endif()
-
-  if(CMAKE_CXX_STANDARD EQUAL 11)
-    set(SAMPLES_NVRTC_CXX "-std=c++11")
-  else()
-    set(SAMPLES_NVRTC_CXX "")
   endif()
 
   if( NOT DEFINED CMAKE_CONFIGURATION_TYPES )
@@ -207,25 +158,6 @@ if( NOT PASSED_FIRST_CONFIGURE )
       unset( CUDA_NVRTC_FLAGS CACHE )
     endif()
     set( CMAKE_BUILD_TYPE_PREVIOUS ${CMAKE_BUILD_TYPE} CACHE INTERNAL "Previous configured value (CMAKE_BUILD_TYPE)" FORCE )
-
-    set( configs "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
-    foreach( config ${configs} )
-      if( ${config} STREQUAL "Debug" )
-        set( SAMPLES_NVRTC_DEBUG "-G" )
-      else()
-        set( SAMPLES_NVRTC_DEBUG "-lineinfo" )
-      endif()
-
-      string( TOUPPER ${config} config_upper )
-      set( CUDA_NVRTC_FLAGS_${config_upper} ${SAMPLES_NVRTC_CXX} -arch ${CUDA_MIN_SM_COMPUTE_TARGET} ${SAMPLES_NVRTC_DEBUG} -use_fast_math -default-device -rdc true -D__x86_64 CACHE STRING "List of NVRTC options just for the samples" FORCE )
-
-      if( ${config} STREQUAL ${CMAKE_BUILD_TYPE} )
-        set( CUDA_NVRTC_FLAGS ${CUDA_NVRTC_FLAGS_${config_upper}} CACHE STRING "List of NVRTC options just for the samples" )
-      endif()
-    endforeach()
-  else()
-    set( CUDA_NVRTC_FLAGS ${SAMPLES_NVRTC_CXX} -arch ${CUDA_MIN_SM_COMPUTE_TARGET} -lineinfo -use_fast_math -default-device -rdc true -D__x86_64 CACHE STRING "List of NVRTC options just for the samples" FORCE )
-    set( CUDA_NVRTC_FLAGS_DEBUG ${SAMPLES_NVRTC_CXX} -arch ${CUDA_MIN_SM_COMPUTE_TARGET} -G -use_fast_math -default-device -rdc true -D__x86_64 CACHE STRING "List of NVRTC options just for the samples" FORCE )
   endif()
 endif()
 
@@ -287,34 +219,10 @@ endif( WIN32 )
 
 set(SAMPLES_CUDA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cuda")
 
-# NVRTC include paths relative to the sample path
-set(SAMPLES_RELATIVE_INCLUDE_DIRS "\\
-  \"cuda\", \\
-  \".\", ")
-
-# NVRTC absolute include paths to the headers used to build the samples
-set(SAMPLES_ABSOLUTE_INCLUDE_DIRS "\\
-  \"${OptiX_INCLUDE}\", \\
-  \"${CUDA_INCLUDE_DIRS}\", ")
-
-# Build a null-terminated option list for NVRTC
-set( config_suffixes "_RELEASE" "_DEBUG" )
-foreach( config_suffix ${config_suffixes} )
-  # CMake doesn't allow empty strings in lists, so use a dummy suffix
-  if( ${config_suffix} STREQUAL "_RELEASE" )
-    set( config_suffix "" )
-  endif()
-  set(CUDA_NVRTC_OPTIONS${config_suffix})
-  foreach(flag ${CUDA_NVRTC_FLAGS${config_suffix}})
-    set(CUDA_NVRTC_OPTIONS${config_suffix} "${CUDA_NVRTC_OPTIONS${config_suffix}} \\\n  \"${flag}\",")
-  endforeach()
-  set(CUDA_NVRTC_OPTIONS${config_suffix} "${CUDA_NVRTC_OPTIONS${config_suffix}}")
-endforeach()
 
 configure_file(sampleConfig.h.in sampleConfig.h @ONLY)
 
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}
-                     "${CMAKE_BINARY_DIR}/include"
                      ${CMAKE_CURRENT_BINARY_DIR}
                      ${CUDA_INCLUDE_DIRS}
                      )
@@ -325,14 +233,7 @@ set(SAMPLES_CUDA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cuda)
 # These calls will group PTX and CUDA files into their own directories in the Visual
 # Studio projects.
 macro(OPTIX_add_source_groups)
-  if( NOT CUDA_NVRTC_ENABLED )
-    if( SAMPLES_INPUT_GENERATE_PTX )
-      source_group("PTX Files"  REGULAR_EXPRESSION ".+\\.ptx$")
-    endif()
-    if( SAMPLES_INPUT_GENERATE_OPTIXIR )
-      source_group("OptixIR Files"  REGULAR_EXPRESSION ".+\\.optixir$")
-    endif()
-  endif()
+  source_group("PTX Files"  REGULAR_EXPRESSION ".+\\.ptx$")
   source_group("CUDA Files" REGULAR_EXPRESSION ".+\\.cu$")
 endmacro()
 
@@ -371,18 +272,9 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
   # Create the rules to build the OBJ from the CUDA files.
   CUDA_WRAP_SRCS( ${target_name} OBJ generated_files ${cu_obj_source_files} ${cmake_options} OPTIONS ${options} )
 
-  # Create the rules to build the PTX and/or OPTIX files.
-  # Luning TODO: ptx.cu only need to get generated once. move this out of the loop. 
-  if( SAMPLES_INPUT_GENERATE_OPTIXIR )
-    CUDA_WRAP_SRCS( ${target_name} OPTIXIR generated_files2 ${cu_optix_source_files} ${cmake_options} OPTIONS ${options} )
-    list(APPEND generated_files ${generated_files2})
-  endif()
-  if( SAMPLES_INPUT_GENERATE_PTX AND NOT CUDA_NVRTC_ENABLED)
-    # CUDA_WRAP_SRCS( ${target_name} PTX generated_files3 ${cu_optix_source_files} ${cmake_options} OPTIONS ${options} )
-    CUDA_WRAP_SRCS( "" PTX generated_files3 ${cu_optix_source_files} ${cmake_options} OPTIONS ${options} )
+  CUDA_WRAP_SRCS( "" PTX generated_files3 ${cu_optix_source_files} ${cmake_options} OPTIONS ${options} )
 
-    list(APPEND generated_files ${generated_files3})
-  endif()
+  list(APPEND generated_files ${generated_files3})
 
   # Here is where we create the rule to make the executable.  We define a target name and
   # list all the source files used to create the target.  In addition we also pass along
@@ -412,20 +304,6 @@ function(OPTIX_add_sample_executable target_name_base target_name_var)
     target_link_libraries( ${target_name} m ) # Explicitly link against math library (C samples don't do that by default)
   endif()
 endfunction()
-
-# Function to copy DLLs to the appropriate directory
-function(copy_dll_to_bin target_name)
-    # Use generator expressions to ensure the configuration is properly handled
-    foreach(dll ${DLLS_TO_COPY})
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${dll}"
-            "$<TARGET_FILE_DIR:${target_name}>"
-            COMMENT "Copying ${dll} to $<TARGET_FILE_DIR:${target_name}>"
-        )
-    endforeach()
-endfunction()
-
 
 #------------------------------------------------------------
 # Copy data directory to BUILD tree 
