@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.18)
 project(optixSoltrace LANGUAGES CXX CUDA)
 # This enforces a particular version of CMake that we require to process the script files
 # properly.  We rely on VERSION_GREATER_EQUAL which requires CMake v. 3.7.
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CUDA_ARCHITECTURES 75;86;89)
@@ -160,8 +160,6 @@ if( NOT PASSED_FIRST_CONFIGURE )
     set( CMAKE_BUILD_TYPE_PREVIOUS ${CMAKE_BUILD_TYPE} CACHE INTERNAL "Previous configured value (CMAKE_BUILD_TYPE)" FORCE )
   endif()
 endif()
-
-mark_as_advanced(CUDA_NVRTC_FLAGS)
 
 # This passes a preprocessor definition to cl.exe when processing CUDA code.
 if(USING_WINDOWS_CL)
