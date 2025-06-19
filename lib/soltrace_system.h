@@ -1,14 +1,22 @@
-#ifndef SOLTR_SYSTEM_H
-#define SOLTR_SYSTEM_H
+#pragma once
 
-//#include <string>
-//#include <vector>
-//#include <memory>
-#include "lib/geometry_manager.h"
+#include <string>
+#include <vector>
+#include <memory>                 
+#include <cstddef>                
+#include <cstdio>                 
+
+
+
+#include "lib/soltrace_state.h" // SoltraceState
+#include "lib/vector3d.h"      // Vector3d
 #include "lib/timer.h"
+
+
+class GeometryManager;
 class pipelineManager;
 class dataManager;
-//class Vector3d;
+class Element;
 
 class SolTraceSystem {
 public:
@@ -112,5 +120,3 @@ private:
 
 
 };
-
-#endif // SOLTR_SYSTEM_H

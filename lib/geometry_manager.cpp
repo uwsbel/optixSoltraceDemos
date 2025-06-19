@@ -1,22 +1,11 @@
 #include "geometry_manager.h"
-//#include <cfloat> 
-#include <cuda/GeometryDataST.h>
-#include <sun_utils.h>
-#include <soltrace_state.h>
-//#include <optix.h>
-#include <vector>
+#include "cuda/GeometryDataST.h"
+#include "sun_utils.h"
+#include "lib/soltrace_state.h"
 #include "util_check.hpp"
-#include "data_manager.h"
+#include "lib/data_manager.h"
+#include <vector>
 
-// TODO 
-// need to extractr sun plane 
-
-
-
-// this one need to be refactored
-// note that the sun plane is part of the pre-processing, need to be able to 
-// compute sun plane fast with updated scene geometry and sun vector
-// ask allie about the abs() part, the distance for buffer calculation and the bin size for flux map computation
 
 void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list,
                                             LaunchParams& params) {    
@@ -24,7 +13,7 @@ void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<El
     m_sbt_index_H.clear(); // Clear the existing SBT index list
 	m_geometry_data_array_H.clear(); // Clear the existing geometry data array
 
-	m_obj_counts = element_list.size(); // Number of objects in the scene
+	m_obj_counts = static_cast<uint32_t>(element_list.size()); // Number of objects in the scene
 
 	// Resize
 	m_aabb_list_H.resize(m_obj_counts);
@@ -32,7 +21,7 @@ void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<El
     m_sbt_index_H.resize(m_obj_counts);
 
 
-    for (int i = 0; i < m_obj_counts; i++) {
+    for (uint32_t i = 0; i < m_obj_counts; i++) {
 
 		std::shared_ptr<Element> element = element_list[i];
 
@@ -50,13 +39,13 @@ void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<El
 
         if (element->get_aperture_type() == ApertureType::RECTANGLE) {
             element->compute_bounding_box();
-            m_min.x = element->get_lower_bounding_box()[0];
-            m_min.y = element->get_lower_bounding_box()[1];
-            m_min.z = element->get_lower_bounding_box()[2];
+            m_min.x = (float)(element->get_lower_bounding_box()[0]);
+            m_min.y = (float)(element->get_lower_bounding_box()[1]);
+			m_min.z = (float)(element->get_lower_bounding_box()[2]);
 
-            m_max.x = element->get_upper_bounding_box()[0];
-            m_max.y = element->get_upper_bounding_box()[1];
-            m_max.z = element->get_upper_bounding_box()[2];
+			m_max.x = (float)(element->get_upper_bounding_box()[0]);
+			m_max.y = (float)(element->get_upper_bounding_box()[1]);
+			m_max.z = (float)(element->get_upper_bounding_box()[2]);
 
             if (element->get_surface_type() == SurfaceType::PARABOLIC) {
                 sbt_offset = static_cast<uint32_t>(OpticalEntityType::RECTANGLE_PARABOLIC_MIRROR);

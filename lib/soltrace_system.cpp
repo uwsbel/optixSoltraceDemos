@@ -14,6 +14,7 @@
 #include <iostream>
 #include <iomanip>
 #include <optix_stubs.h>
+#include "math_util.h"
 
 using namespace soltrace;
 
@@ -46,25 +47,26 @@ void SolTraceSystem::print_launch_params() {
 }
 
 SolTraceSystem::SolTraceSystem(int numSunPoints)
-    : m_num_sunpoints(numSunPoints)
+    : m_num_sunpoints(numSunPoints),
+      m_verbose(false),
+      m_mem_free_before(0),
+      m_mem_free_after(0),
+      m_sun_angle(0.0),
+      m_timer_setup(),
+      m_timer_trace(),
+      geometry_manager(std::make_shared<GeometryManager>(m_state)),
+      data_manager(std::make_shared<dataManager>()),
+      pipeline_manager(std::make_shared<pipelineManager>(m_state))
 {
-    m_verbose = false;
-    // TODO: think about m_state again, attach or not attach
-    geometry_manager = std::make_shared<GeometryManager>(m_state);
-    data_manager = std::make_shared<dataManager>();
-
-
     CUDA_CHECK(cudaFree(0));
     CUcontext cuCtx = 0;
     OPTIX_CHECK(optixInit());
     OptixDeviceContextOptions options = {};
     options.logCallbackFunction = [](unsigned int level, const char* tag, const char* message, void*) {
         std::cerr << "[" << std::setw(2) << level << "][" << std::setw(12) << tag << "]: " << message << "\n";
-        };
+    };
     options.logCallbackLevel = 4;
     OPTIX_CHECK(optixDeviceContextCreate(cuCtx, &options, &m_state.context));
-
-    pipeline_manager = std::make_shared<pipelineManager>(m_state);
 }
 
 SolTraceSystem::~SolTraceSystem() {
@@ -79,8 +81,8 @@ void SolTraceSystem::initialize() {
 	Vector3d sun_vec = m_sun_vector.normalized(); // normalize the sun vector
 
     // set up input related to sun
-    data_manager->launch_params_H.sun_vector = make_float3(sun_vec[0], sun_vec[1], sun_vec[2]);
-    data_manager->launch_params_H.max_sun_angle = m_sun_angle;
+	data_manager->launch_params_H.sun_vector = mathUtil::toFloat3(sun_vec);
+    data_manager->launch_params_H.max_sun_angle = (float)(m_sun_angle);
 
     Timer AABB_timer;
     AABB_timer.start();
@@ -142,10 +144,8 @@ void SolTraceSystem::initialize() {
 
 void SolTraceSystem::run() {
 
-    auto params = data_manager->getDeviceLaunchParams();
     int width = data_manager->launch_params_H.width;
     int height = data_manager->launch_params_H.height;
-
 
     size_t m_mem_free_after;
     cudaMemGetInfo(&m_mem_free_after, nullptr);
@@ -189,7 +189,7 @@ bool SolTraceSystem::read_st_input(const char* filename) {
 	{
         if (m_verbose)
     		printf("failed to open system input file\n");
-		return -1;
+		return false;
 	}
 
 	if ( !read_system( fp ) )
@@ -197,7 +197,7 @@ bool SolTraceSystem::read_st_input(const char* filename) {
 		if (m_verbose)
 			printf("error in system input file.\n");
 		fclose(fp);
-		return -1;
+		return false;
 	}
 	
 	fclose(fp);
@@ -443,7 +443,7 @@ double SolTraceSystem::get_time_setup() {
 void SolTraceSystem::set_sun_vector(Vector3d vect) {
     m_sun_vector = vect;
     Vector3d sun_v = m_sun_vector.normalized(); // Normalize the sun vector
-    data_manager->launch_params_H.sun_vector = make_float3(sun_v[0], sun_v[1], sun_v[2]);
+	data_manager->launch_params_H.sun_vector = mathUtil::toFloat3(sun_v);
 }
 
 std::vector<std::string> SolTraceSystem::split(const std::string& str, const std::string& delim, bool ret_empty, bool ret_delim) {
@@ -485,7 +485,7 @@ std::vector<std::string> SolTraceSystem::split(const std::string& str, const std
 
 void SolTraceSystem::read_line(char* buf, int len, FILE* fp) {
 	fgets(buf, len, fp);
-	int nch = strlen(buf);
+	size_t nch = strlen(buf);
 	if (nch > 0 && buf[nch-1] == '\n')
 		buf[nch-1] = 0;
 	if (nch-1 > 0 && buf[nch-2] == '\r')
@@ -564,7 +564,7 @@ bool SolTraceSystem::read_optic_surface(FILE* fp) {
 	std::vector<std::string> parts  = split( std::string(buf), "\t", true, false );
 	if (parts.size() < 15)
 	{
-		printf("too few tokens for optical surface: %d\n", parts.size());
+        printf("too few tokens for optical surface: %zu\n", parts.size());
 		printf("\t>> %s\n", buf);
 		return false;
 	}
@@ -573,6 +573,7 @@ bool SolTraceSystem::read_optic_surface(FILE* fp) {
 	if (parts[1].length() > 0)
 		ErrorDistribution = parts[1][0];
 
+    /*
 	int ApertureStopOrGratingType = atoi( parts[2].c_str() );
 	int OpticalSurfaceNumber = atoi( parts[3].c_str() );
 	int DiffractionOrder = atoi( parts[4].c_str() );
@@ -587,6 +588,7 @@ bool SolTraceSystem::read_optic_surface(FILE* fp) {
 	GratingCoeffs[1] = atof( parts[12].c_str() );
 	GratingCoeffs[2] = atof( parts[13].c_str() );
 	GratingCoeffs[3] = atof( parts[14].c_str() );
+    */
 
 	bool UseReflectivityTable = false;
 	int refl_npoints = 0;
@@ -675,7 +677,7 @@ bool SolTraceSystem::read_element(FILE* fp) {
     std::vector<std::string> tok = split(buf, "\t", true, false);
     if (tok.size() < 29)
     {
-        printf("too few tokens for element: %d\n", tok.size());
+        printf("too few tokens for element: %d\n", static_cast<int>(tok.size()));
         printf("\t>> %s\n", buf);
         return false;
     }
@@ -814,9 +816,9 @@ bool SolTraceSystem::read_system(FILE* fp) {
 		int vmaj = 0, vmin = 0, vmic = 0;
 		read_line( buf, 1023, fp ); sscanf( buf, " SOLTRACE VERSION %d.%d.%d INPUT FILE", &vmaj, &vmin, &vmic);
 
-		unsigned int file_version = vmaj*10000 + vmin*100 + vmic;
+		//unsigned int file_version = vmaj*10000 + vmin*100 + vmic;
 		
-		//printf( "loading input file version %d.%d.%d\n", vmaj, vmin, vmic );
+		printf( "loading input file version %d.%d.%d\n", vmaj, vmin, vmic );
 	}
 	else
 	{

@@ -128,12 +128,6 @@ GeometryDataST Element::toDeviceGeometryData() const {
         Vector3d v1 = rotation_matrix.get_x_basis();
         Vector3d v2 = rotation_matrix.get_y_basis();
 
-        //std::cout << "x basis of heliostat : " << v1[0] << ", " << v1[1] << ", " << v1[2] << std::endl;
-        //std::cout << "y basis of heliostat : " << v2[0] << ", " << v2[1] << ", " << v2[2] << std::endl;
-
-        SurfaceType surface_type = m_surface->get_surface_type();
-        ApertureType aperture_type = m_aperture->get_aperture_type();
-
         if (surface_type == SurfaceType::FLAT) {
             GeometryDataST::Rectangle_Flat heliostat(mathUtil::toFloat3(m_origin), mathUtil::toFloat3(v1), mathUtil::toFloat3(v2), (float)width, (float)height);
             geometry_data.setRectangle_Flat(heliostat);
@@ -150,8 +144,8 @@ GeometryDataST Element::toDeviceGeometryData() const {
         }
 
 		if (surface_type == SurfaceType::CYLINDER) {
-            float radius = (float)width / 2.;
-            float half_height = (float)height / 2.;
+            float radius = static_cast<float>(width) / 2.0f;
+            float half_height = static_cast<float>(height) / 2.0f;
 
 			float3 center = mathUtil::toFloat3(m_origin);
 			Matrix33d rotation_matrix = get_rotation_matrix();  // L2G rotation matrix

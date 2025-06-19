@@ -12,8 +12,6 @@
 #include "cuda/GeometryDataST.h"
 
 class Aperture;
-
-// Ask John, why element needs a base? difference between ElementBase and Element?
 class ElementBase {
 public:
     ElementBase();

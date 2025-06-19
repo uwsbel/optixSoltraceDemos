@@ -320,6 +320,7 @@ OptixProgramGroup pipelineManager::getMirrorProgram(SurfaceApertureMap map) cons
 		}
 
     }
+    throw std::runtime_error("Unsupported surface or aperture type in getMirrorProgram");
 }
 
 OptixProgramGroup pipelineManager::getReceiverProgram(SurfaceType surfaceType) const {

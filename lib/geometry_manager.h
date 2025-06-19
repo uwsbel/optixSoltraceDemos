@@ -21,7 +21,7 @@ using soltrace::LaunchParams;
  */
 class GeometryManager {
 public:
-	GeometryManager(SoltraceState& state) : m_state(state) {}
+	GeometryManager(SoltraceState& state) : m_state(state), m_obj_counts(0) {}
     ~GeometryManager() {} 
 
 	/// go through the list of elements and collect the geometry info on the host: 
@@ -49,7 +49,7 @@ public:
 private: 
 	SoltraceState& m_state;
 	float m_sun_plane_distance = -1.0f; // distance of the sun plane from the origin
-    int m_obj_counts;
+	uint32_t m_obj_counts;
 
     // data related to the geometry and the scene on the host side
 	std::vector<OptixAabb>      m_aabb_list_H;           // aabb list

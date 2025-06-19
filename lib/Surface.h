@@ -2,8 +2,6 @@
 #define SOLTRACE_SURFACE_H
 
 #include "soltrace_type.h"    // For SurfaceType enum
-#include "vector3d.h"
-
 
 /**
  * @class Surface
@@ -79,7 +77,7 @@ public:
 /// cylindrical surface (with caps)
 class SurfaceCylinder : public Surface {
 public:
-    SurfaceCylinder() = default;
+    SurfaceCylinder() : m_radius(1.0), m_half_height(1.0) {} // Initialize member variables
     virtual ~SurfaceCylinder() = default;
 
     SurfaceType get_surface_type() const override {
@@ -103,8 +101,8 @@ public:
     }
 
 private:
-    double m_radius;
-    double m_half_height;
+    double m_radius{1.0};       // Default initialization
+    double m_half_height{1.0}; // Default initialization
 };
 
 

@@ -1,4 +1,5 @@
 #include "soltrace_system.h"
+#include "lib/element.h"
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
