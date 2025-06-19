@@ -1,13 +1,12 @@
-#include "soltrace_system.h"
 #include "geometry_manager.h"
-#include <cfloat> 
+//#include <cfloat> 
 #include <cuda/GeometryDataST.h>
-#include <cuda/Soltrace.h>
 #include <sun_utils.h>
 #include <soltrace_state.h>
-#include <optix.h>
+//#include <optix.h>
 #include <vector>
 #include "util_check.hpp"
+#include "data_manager.h"
 
 // TODO 
 // need to extractr sun plane 

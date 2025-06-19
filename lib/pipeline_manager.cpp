@@ -199,8 +199,8 @@ void pipelineManager::createHitGroupProgram(OptixProgramGroup& group,
 // TODO: simplify 
 void pipelineManager::createSunProgram()
 {
-    OptixProgramGroup           group;                 // Handle for the sun program group.
-    OptixProgramGroupOptions    options = {};    // Options for the program group (none needed in this case).
+    OptixProgramGroup           group;           // Handle for the sun program group.
+    OptixProgramGroupOptions    options = {};    // Options for the program group
     OptixProgramGroupDesc       desc = {};       // Descriptor to define the program group.
 
     // Specify the kind of program group (Ray Generation).

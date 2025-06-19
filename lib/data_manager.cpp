@@ -1,5 +1,5 @@
-#include "soltrace_system.h"
-#include "data_manager.h"
+#include "lib/data_manager.h"
+#include "lib/soltrace_system.h"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -7,8 +7,6 @@
 #include <iostream>
 #include <iomanip>
 #include "util_check.hpp"
-#include "data_manager.h"
-
 
 dataManager::dataManager() : launch_params_D(nullptr) {
 	

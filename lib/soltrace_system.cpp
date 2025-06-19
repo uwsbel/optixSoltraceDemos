@@ -1,19 +1,21 @@
 #include "soltrace_system.h"
-#include "geometry_manager.h"
-#include "data_manager.h"
-#include "pipeline_manager.h"
-#include <fstream>
-#include <sstream>
-#include <stdexcept>
-#include <chrono>
-#include <iostream>
-#include <iomanip>
-#include "soltrace_type.h"
-#include <element.h>
+#include "lib/geometry_manager.h"
+#include "lib/data_manager.h"
+#include "lib/pipeline_manager.h"
+#include "lib/soltrace_type.h"
+#include "lib/element.h"
+
 #include "util_record.hpp"
 #include "util_check.hpp"
-#include <sampleConfig.h>
+#include "lib/timer.h"
 
+
+#include <fstream>
+#include <iostream>
+#include <iomanip>
+#include <optix_stubs.h>
+
+using namespace soltrace;
 
 // TODO: optix related type should go into one header file
 typedef Record<soltrace::HitGroupData> HitGroupRecord;
@@ -438,6 +440,11 @@ double SolTraceSystem::get_time_setup() {
 	return m_timer_setup.get_time_sec();
 }
 
+void SolTraceSystem::set_sun_vector(Vector3d vect) {
+    m_sun_vector = vect;
+    Vector3d sun_v = m_sun_vector.normalized(); // Normalize the sun vector
+    data_manager->launch_params_H.sun_vector = make_float3(sun_v[0], sun_v[1], sun_v[2]);
+}
 
 std::vector<std::string> SolTraceSystem::split(const std::string& str, const std::string& delim, bool ret_empty, bool ret_delim) {
 	

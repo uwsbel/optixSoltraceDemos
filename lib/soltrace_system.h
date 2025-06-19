@@ -1,13 +1,14 @@
 #ifndef SOLTR_SYSTEM_H
 #define SOLTR_SYSTEM_H
 
-#include <string>
-#include <vector>
-
-#include <geometry_manager.h>
+//#include <string>
+//#include <vector>
+//#include <memory>
+#include "lib/geometry_manager.h"
+#include "lib/timer.h"
 class pipelineManager;
-
-using namespace soltrace;
+class dataManager;
+//class Vector3d;
 
 class SolTraceSystem {
 public:
@@ -43,11 +44,7 @@ public:
 	/// set normalized sun vector
 	/// </summary>
 	/// <param name="sunVector"></param>
-    void set_sun_vector(Vector3d vect) {
-        m_sun_vector = vect;
-        Vector3d sun_v = m_sun_vector.normalized(); // Normalize the sun vector
-        data_manager->launch_params_H.sun_vector = make_float3(sun_v[0], sun_v[1], sun_v[2]);
-    } // Set the sun vector
+    void set_sun_vector(Vector3d vect);
 
 	void set_sun_angle(double angle) { m_sun_angle = angle; } // Set the sun angle
 

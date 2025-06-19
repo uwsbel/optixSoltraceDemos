@@ -1,5 +1,6 @@
 #pragma once
 #include <vector_types.h>
+#include <optix.h>
 #include <cuda/GeometryDataST.h>
 #include <cuda/MaterialDataST.h>
 
@@ -12,18 +13,6 @@ const unsigned int MAX_TRACE_DEPTH      = 5u;
 struct HitGroupData
 {
     MaterialData material_data;
-};
-
-struct BoundingBoxVertex
-{
-    float       distance;
-    float3      point;
-};
-
-struct ProjectedPoint
-{
-    float       buffer;
-    float2      point;
 };
 
 enum RayType

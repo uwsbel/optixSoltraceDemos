@@ -4,6 +4,7 @@
 
 #include <cuda/Soltrace.h>
 #include <lib/element.h>
+#include <vector>
 
 using namespace soltrace;
 
@@ -21,7 +22,6 @@ public:
 	// device pointer to geometry data
     GeometryDataST* geometry_data_array_D;
 
-    float4* d_hit_point_buffer;
     dataManager();
     ~dataManager();
 
