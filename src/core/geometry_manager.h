@@ -7,7 +7,7 @@
 #include <cuda_runtime.h>
 #include <optix.h>
 
-#include "Soltrace.h"
+#include "shaders/Soltrace.h"
 #include "element.h"
 #include "soltrace_state.h"
 

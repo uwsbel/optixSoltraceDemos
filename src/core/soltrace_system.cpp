@@ -4,17 +4,16 @@
 #include "pipeline_manager.h"
 #include "soltrace_type.h"
 #include "element.h"
-
-#include "util_record.hpp"
-#include "util_check.hpp"
 #include "timer.h"
 
-
+#include "utils/util_record.hpp"
+#include "utils/util_check.hpp"
+#include "utils/math_util.h"
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <optix_function_table_definition.h>
 #include <optix_stubs.h>
-#include "math_util.h"
 
 using namespace soltrace;
 

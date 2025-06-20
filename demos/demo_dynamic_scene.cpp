@@ -1,11 +1,8 @@
-#include "soltrace_system.h"
-#include "lib/element.h"
+#include "core/soltrace_system.h"
+#include "core/element.h"
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
-#include <optix_function_table_definition.h>
-#include <timer.h>
-
 
 int main(int argc, char* argv[]) {
 

@@ -1,9 +1,9 @@
 // main.cpp
-#include "lib/soltrace_system.h"
+#include "core/soltrace_system.h"
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
-#include <optix_function_table_definition.h>
+using namespace std;
 
 int main(int argc, char* argv[]) {
     bool parabolic = true; // Set to true for parabolic mirrors, false for flat mirrors

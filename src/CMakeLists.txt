@@ -10,7 +10,6 @@ add_library(OptixCSP_core STATIC)
 find_package(CUDAToolkit REQUIRED)
 find_package(OptiX REQUIRED)
 
-message(STATUS "OptiX libary: ${OptiX_LIBRARY}")
 message(STATUS "OptiX include directory: ${OptiX_INCLUDE}")
 
 
@@ -22,16 +21,13 @@ target_sources(OptixCSP_core PRIVATE ${CORE_SRC} ${CORE_HDR})
 target_include_directories(OptixCSP_core
     PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/interface
             ${OptiX_INCLUDE}
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/core
-            ${CMAKE_CURRENT_SOURCE_DIR}/utils
-            ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_BINARY_DIR}
             ${OptiX_INCLUDE})
 
 target_link_libraries(OptixCSP_core
     PRIVATE CUDA::cuda_driver
-            CUDA::cudart_static
-            ${OptiX_LIBRARY})
+            CUDA::cudart_static)
 
 # have to specify the Optix_INCLUDE directory for the CUDA compiler 
 target_compile_options(OptixCSP_core PRIVATE

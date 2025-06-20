@@ -8,8 +8,8 @@
 #include "soltrace_type.h"
 #include "surface.h"
 #include "aperture.h"
-#include "math_util.h"
-#include "../shaders/GeometryDataST.h"
+#include "utils/math_util.h"
+#include "shaders/GeometryDataST.h"
 
 class Aperture;
 class ElementBase {

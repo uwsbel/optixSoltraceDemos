@@ -2,7 +2,8 @@
 #include <curand_kernel.h>
 #include <vector_types.h>
 
-#include "Soltrace.h"
+#include "shaders/Soltrace.h"
+
 #include <cuda_runtime.h>
 #include <iostream>
 

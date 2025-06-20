@@ -3,7 +3,6 @@
 # -------------------------------------------------------------------------------
 
 set(DEMOS
-     demo_three_heliostats
      demo_large_scene
      demo_dynamic_scene
 )
@@ -14,18 +13,18 @@ message(STATUS "Adding demo programs for OptiX SolTrace ...")
 foreach(PROGRAM ${DEMOS})
     message(STATUS "Adding ${PROGRAM}")
 
-    # Add executable using OPTIX_add_sample_executable
-    OPTIX_add_sample_executable(${PROGRAM} target_name
-        ${SAMPLES_CUDA_DIR}/Soltrace.h
-        ${SAMPLES_CUDA_DIR}/GeometryDataST.h
-        ${SAMPLES_CUDA_DIR}/MaterialDataST.h
-        ${SAMPLES_CUDA_DIR}/sun.cu
-        ${SAMPLES_CUDA_DIR}/intersection.cu
-        ${SAMPLES_CUDA_DIR}/materials.cu
-        ${PROGRAM}.cpp
+
+    add_executable(${PROGRAM})
+    target_sources(${PROGRAM} PRIVATE ${PROGRAM}.cpp )
+    set_property(TARGET ${PROGRAM} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROGRAM}>")
+
+    target_include_directories(${PROGRAM}
+        PRIVATE ${PROJECT_SOURCE_DIR}/src
     )
 
-    # Add compile definitions (specific to OptiX)
-    target_compile_definitions(${PROGRAM} PRIVATE CUDA_NVRTC_ENABLED)
+    message(STATUS "include directory:  ${PROJECT_SOURCE_DIR}/src")
+
+    target_link_libraries(${PROGRAM}
+        PUBLIC OptixCSP_core)
 
 endforeach()

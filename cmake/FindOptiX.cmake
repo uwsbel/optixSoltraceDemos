@@ -65,14 +65,6 @@ find_path(OptiX_INCLUDE
 
 message(STATUS "find optix :" ${OptiX_INSTALL_DIR} )
 
-# find_library(OptiX_LIBRARY
-#     NAMES optix
-#     PATHS "${OptiX_INSTALL_DIR}/lib64"
-#     NO_DEFAULT_PATH
-# )
-# message(STATUS "find optix library :" ${OptiX_INSTALL_DIR} )
-
-
 if(NOT OptiX_INCLUDE)
   message(FATAL_ERROR "Could not find optix.h in ${OptiX_INSTALL_DIR}/include.")
 endif()

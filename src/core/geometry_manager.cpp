@@ -1,11 +1,10 @@
 #include "geometry_manager.h"
-#include "GeometryDataST.h"
+#include "shaders/GeometryDataST.h"
 #include "sun_utils.h"
 #include "soltrace_state.h"
-#include "util_check.hpp"
+#include "utils/util_check.hpp"
 #include "data_manager.h"
 #include <vector>
-
 
 void GeometryManager::collect_geometry_info(const std::vector<std::shared_ptr<Element>>& element_list,
                                             LaunchParams& params) {    

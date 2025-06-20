@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include "optix.h"
-#include "Soltrace.h"
+#include "shaders/Soltrace.h"
 #include "soltrace_type.h"
 #include "soltrace_state.h"
 

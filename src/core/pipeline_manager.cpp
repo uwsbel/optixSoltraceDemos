@@ -5,8 +5,9 @@
 #include <sampleConfig.h>
 #include <optix_stack_size.h>
 #include <optix_stubs.h>
-#include "util_check.hpp"
-#include "Soltrace.h"
+#include "utils/util_check.hpp"
+#include "shaders/Soltrace.h"
+
 #include "data_manager.h"
 #include "soltrace_state.h"
 #include "pipeline_manager.h"
@@ -50,7 +51,7 @@ void pipelineManager::cleanup() {
 }
 
 std::string pipelineManager::loadPtxFromFile(const std::string& kernelName) {
-    std::string ptxFile = std::string(SAMPLES_PTX_DIR) + "_generated_" + kernelName + ".cu.ptx";
+    std::string ptxFile = std::string(SAMPLES_PTX_DIR) + "/" + kernelName + ".ptx";
     std::ifstream file(ptxFile);
     if (!file.good())
         throw std::runtime_error("PTX file not found: " + ptxFile);

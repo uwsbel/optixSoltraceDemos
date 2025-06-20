@@ -1,12 +1,12 @@
 #include "data_manager.h"
 #include "soltrace_system.h"
+#include "../utils/util_check.hpp"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <chrono>
 #include <iostream>
 #include <iomanip>
-#include "../utils/util_check.hpp"
 
 dataManager::dataManager() : launch_params_D(nullptr) {
 	
