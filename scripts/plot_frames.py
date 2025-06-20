@@ -126,7 +126,7 @@ def plot_trace(df: pd.DataFrame, png_name: str,
 
 # ------------- batch driver ----------------------------------------
 if __name__ == "__main__":
-    folder = pathlib.Path(r"C:/Users/fang/Documents/NREL_SOLAR/optix/build/bin/Release")
+    folder = pathlib.Path(r"C:/Users/fang/Documents/NREL_SOLAR/optix/cmake_refactor/build/bin/Release")
     for idx in range(42):
         print(f"Processing frame {idx} …")
         df = pd.read_csv(folder / f"output_dynamic_{idx}.csv")
