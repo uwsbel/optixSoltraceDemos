@@ -1,0 +1,98 @@
+# ──────────────────────────────────────────────────────────────
+#  src/CMakeLists.txt   – builds the OptixCSP core library
+# ──────────────────────────────────────────────────────────────
+
+# ---------------------------------------------------------------------------
+# core target
+# ---------------------------------------------------------------------------
+add_library(OptixCSP_core STATIC)
+
+find_package(CUDAToolkit REQUIRED)
+find_package(OptiX REQUIRED)
+
+message(STATUS "OptiX libary: ${OptiX_LIBRARY}")
+message(STATUS "OptiX include directory: ${OptiX_INCLUDE}")
+
+
+file(GLOB_RECURSE CORE_SRC  CONFIGURE_DEPENDS  core/*.cpp core/*.cu)
+file(GLOB_RECURSE CORE_HDR  CONFIGURE_DEPENDS  core/*.hpp core/*.h utils/*.hpp utils/*.h shaders/*.h)
+
+target_sources(OptixCSP_core PRIVATE ${CORE_SRC} ${CORE_HDR})
+
+target_include_directories(OptixCSP_core
+    PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/interface
+            ${OptiX_INCLUDE}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/core
+            ${CMAKE_CURRENT_SOURCE_DIR}/utils
+            ${CMAKE_CURRENT_SOURCE_DIR}/shaders
+            ${CMAKE_CURRENT_BINARY_DIR}
+            ${OptiX_INCLUDE})
+
+target_link_libraries(OptixCSP_core
+    PRIVATE CUDA::cuda_driver
+            CUDA::cudart_static
+            ${OptiX_LIBRARY})
+
+# have to specify the Optix_INCLUDE directory for the CUDA compiler 
+target_compile_options(OptixCSP_core PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math -lineinfo -I"${OptiX_INCLUDE}">
+)
+# ---------------------------------------------------------------------------
+# shaders target
+# ---------------------------------------------------------------------------
+
+#  --gencode flag for all CMAKE_CUDA_ARCHITECTURES
+set(CUDA_GENCODE_FLAGS "")
+foreach(arch ${CMAKE_CUDA_ARCHITECTURES})
+    list(APPEND CUDA_GENCODE_FLAGS "-gencode=arch=compute_${arch},code=sm_${arch}")
+endforeach()
+
+set(SHADERS
+    intersection
+    materials
+    sun
+)
+
+set(PTX_OUTPUT_DIR "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/ptx")
+file(MAKE_DIRECTORY "${PTX_OUTPUT_DIR}")
+
+message(STATUS "PTX output directory: ${PTX_OUTPUT_DIR}")
+
+foreach(shader ${SHADERS})
+    set(SHADER_SRC ${CMAKE_CURRENT_SOURCE_DIR}/shaders/${shader}.cu)
+    set(SHADER_PTX ${PTX_OUTPUT_DIR}/${shader}.ptx)
+
+    add_custom_command(
+        OUTPUT ${SHADER_PTX}
+        COMMAND ${CMAKE_CUDA_COMPILER}
+            --use_fast_math
+            -lineinfo
+            -std=c++17
+            -arch=sm_89
+            -I${OptiX_INCLUDE}      
+            -DOPTIX_INCLUDE_INTERNAL_FUNCTIONS
+            -ptx
+            -o ${SHADER_PTX}
+            ${SHADER_SRC}
+        DEPENDS ${SHADER_SRC}
+        COMMENT "Generating PTX: ${shader}.ptx"
+    )
+
+    list(APPEND PTX_OUTPUTS ${SHADER_PTX})
+endforeach()
+
+add_custom_target(OptixCSP_shaders DEPENDS ${PTX_OUTPUTS})
+
+# ---------------------------------------------------------------------------
+# core depends on shaders target
+# ---------------------------------------------------------------------------
+add_dependencies(OptixCSP_core OptixCSP_shaders)
+
+
+# ---------------------------------------------------------------------------
+# generate sampleConfig.h
+# ---------------------------------------------------------------------------
+configure_file(
+    ../sampleConfig.h.in               # contains:  #define SAMPLES_PTX_DIR "@PTX_OUTPUT_DIR@/"
+    ${CMAKE_CURRENT_BINARY_DIR}/sampleConfig.h
+    @ONLY)

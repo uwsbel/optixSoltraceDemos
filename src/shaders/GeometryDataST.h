@@ -1,5 +1,5 @@
 #pragma once
-#include <sutil/vec_math.h>
+#include "device_util.h"
 #ifndef __CUDACC_RTC__
 #include <cassert>
 #else

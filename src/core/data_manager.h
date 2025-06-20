@@ -2,8 +2,8 @@
 #ifndef DATAMANAGER_H
 #define DATAMANAGER_H
 
-#include <cuda/Soltrace.h>
-#include <lib/element.h>
+#include "../shaders/Soltrace.h"
+#include "element.h"
 #include <vector>
 
 using namespace soltrace;

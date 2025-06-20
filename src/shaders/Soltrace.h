@@ -1,8 +1,10 @@
 #pragma once
+
+#include "GeometryDataST.h"
+#include "MaterialDataST.h"
+
 #include <vector_types.h>
 #include <optix.h>
-#include <cuda/GeometryDataST.h>
-#include <cuda/MaterialDataST.h>
 
 namespace soltrace
 {

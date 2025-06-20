@@ -7,9 +7,9 @@
 #include <cuda_runtime.h>
 #include <optix.h>
 
-#include <cuda/Soltrace.h>
-#include <lib/element.h>
-#include <soltrace_state.h>
+#include "Soltrace.h"
+#include "element.h"
+#include "soltrace_state.h"
 
 class dataManager;
 using soltrace::LaunchParams;

@@ -6,7 +6,7 @@
 #include "surface.h"
 #include "aperture.h"
 #include "math_util.h"
-#include "cuda/GeometryDataST.h"
+#include "GeometryDataST.h"
 #include "element.h"
 #include "vector"
 

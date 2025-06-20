@@ -1,4 +1,4 @@
-#include <optix.h>
+#include <optix_device.h>
 #include <vector_types.h>
 #include "Soltrace.h"
 

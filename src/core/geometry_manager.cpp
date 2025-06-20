@@ -1,9 +1,9 @@
 #include "geometry_manager.h"
-#include "cuda/GeometryDataST.h"
+#include "GeometryDataST.h"
 #include "sun_utils.h"
-#include "lib/soltrace_state.h"
+#include "soltrace_state.h"
 #include "util_check.hpp"
-#include "lib/data_manager.h"
+#include "data_manager.h"
 #include <vector>
 
 

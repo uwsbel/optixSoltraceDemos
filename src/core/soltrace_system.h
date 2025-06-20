@@ -8,9 +8,9 @@
 
 
 
-#include "lib/soltrace_state.h" // SoltraceState
-#include "lib/vector3d.h"      // Vector3d
-#include "lib/timer.h"
+#include "soltrace_state.h" // SoltraceState
+#include "vector3d.h"      // Vector3d
+#include "timer.h"
 
 
 class GeometryManager;

@@ -6,10 +6,10 @@
 #include <optix_stack_size.h>
 #include <optix_stubs.h>
 #include "util_check.hpp"
-#include <cuda/Soltrace.h>
-#include <lib/data_manager.h>
-#include <soltrace_state.h>
-#include <lib/pipeline_manager.h>
+#include "Soltrace.h"
+#include "data_manager.h"
+#include "soltrace_state.h"
+#include "pipeline_manager.h"
 #include <fstream>
 
 

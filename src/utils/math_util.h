@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cmath>
-#include <optix.h>
 #include <vector_types.h>
 #include <vector_functions.h>
 #include "Vector3d.h"

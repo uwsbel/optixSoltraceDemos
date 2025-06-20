@@ -1,8 +1,7 @@
 #include <optix.h>
-#include <cuda/helpers.h>
+//#include <cuda/helpers.h>
 #include "Soltrace.h"
 #include <stdio.h>
-#include <optix_device.h>
 #include "GeometryDataST.h"
 
 extern "C" {

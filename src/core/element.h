@@ -9,7 +9,7 @@
 #include "surface.h"
 #include "aperture.h"
 #include "math_util.h"
-#include "cuda/GeometryDataST.h"
+#include "../shaders/GeometryDataST.h"
 
 class Aperture;
 class ElementBase {
